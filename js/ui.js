@@ -15,6 +15,7 @@ export function toast(text, kind = '') {
     const el = document.createElement('div');
     el.className = `toast ${kind}`;
     el.textContent = text;
+    while ($('#toasts').childElementCount > 1) $('#toasts').firstElementChild.remove();
     $('#toasts').append(el);
     setTimeout(() => el.remove(), 3800);
 }

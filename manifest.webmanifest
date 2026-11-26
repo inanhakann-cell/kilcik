@@ -9,6 +9,11 @@
   "display": "standalone",
   "background_color": "#06131a",
   "theme_color": "#06131a",
+  "shortcuts": [
+    { "name": "Meraları bul", "url": "./?git=kesif" },
+    { "name": "Av günlüğü / Ava başla", "url": "./?git=gunluk" },
+    { "name": "Hava", "url": "./?git=hava" }
+  ],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

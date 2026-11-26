@@ -95,6 +95,22 @@ export async function bundled(lat, lon, km) {
     return lat - dLat >= south && lat + dLat <= north && lon - dLon >= west && lon + dLon <= east ? data : null;
 }
 
+/** Harita sunucusu yanit vermese de gosterilebilecek, uygulamayla gelen en yakin kiyi noktalari. */
+export async function coastPlaces(lat, lon, km = 25, limit = 6) {
+    const data = await bundled(lat, lon, 0);
+    if (!data) return [];
+    const points = data.ways.flat().map(([a, b]) => ({ lat: a, lon: b, km: distanceKm(lat, lon, a, b) })).filter(p => p.km <= km).sort((a, b) => a.km - b.km);
+    const out = [];
+    for (const p of points) {
+        if (out.length >= limit) break;
+        if (out.some(o => distanceKm(o.lat, o.lon, p.lat, p.lon) < 3)) continue;
+        const [name, a, b] = data.settlements.reduce((best, s) => (distanceKm(p.lat, p.lon, s[1], s[2]) < distanceKm(p.lat, p.lon, best[1], best[2]) ? s : best));
+        const near = distanceKm(p.lat, p.lon, a, b) <= 6;
+        out.push({ ...p, id: `kiyi_${p.lat}_${p.lon}`, name: near ? `${name} yakını kıyı` : `Kıyı noktası · ${p.km.toFixed(1)} km`, water: 'tuzlu', bonus: 0 });
+    }
+    return out;
+}
+
 /** Kiyi cizgisi parcalari: [[{lat, lon}, ...], ...]. Haftalarca degismez, cihazda saklanir. */
 export async function coastline(lat, lon, km) {
     const local = await bundled(lat, lon, km);

@@ -9,6 +9,7 @@ import { PEAK } from '../activity.js';
 import { SPECIES } from '../species.js';
 import { ruleFor, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
+import * as guide from '../guide.js';
 import { app, $, esc, chips, toast, uid, persist, download, copy, mapsUrl, SAFETY } from '../ui.js';
 
 const opts = { radius: 35, day: 0, mode: 'kiyi', quiet: false, sort: 'puan', islands: false };
@@ -85,7 +86,7 @@ async function run() {
             const pack = packs.get(keyOf(s));
             if (pack && C.dataStatus(pack, Date.now()).ok) usable.push(s);
         }
-        if (!usable.length) throw new Error('Güncel hava verisi alınamadı.');
+        if (!usable.length) throw new Error('Hava servisi şu an yanıt vermiyor. Bir iki dakika sonra yeniden tarayın.');
         if (mine !== token) return;
         const bottoms = new Map();
         let checked = 'bekliyor';
@@ -162,7 +163,7 @@ function card(s, n) {
         <p class="mute">${esc(describe(s.f, result.mode === 'tekne' ? 'tekne' : 'kiyi').filter(t => !t.includes('kumluk') && !t.includes('taşlık')).join(' · ') || 'belirgin derinlik yapısı yok')}${s.shore ? ` · rüzgar ${s.shore}` : ''}</p>
         <p class="${safeClass}">${esc(safeText)}${s.reasons.length ? ` — ${esc(s.reasons.join(' '))}` : ''}</p>
         ${s.fish.map(f => `<div class="species"><b>${esc(f.name)} <span class="mono">${C.hhmm(f.from)}–${C.hhmm(f.to)}</span></b><span class="pill">${f.score}</span><small>${esc(f.bait)} · verimli aylar: ${(PEAK[f.name] || []).map(m => MONTHS[m - 1]).join(', ')}</small></div>`).join('') || '<p>Güvenli saat yok.</p>'}
-        <div class="row wrap"><a class="btn primary" href="${mapsUrl(go.lat, go.lon)}" target="_blank" rel="noopener">Yol tarifi</a><button class="btn" data-act="map" data-v="${n}">Haritada</button><button class="btn" data-act="copy" data-v="${n}">Koordinatı kopyala</button><button class="btn" data-act="weather" data-v="${n}">Hava</button><button class="btn" data-act="save" data-v="${n}">Kaydet</button><button class="btn" data-act="log" data-v="${n}">Av ekle</button></div>
+        <div class="row wrap"><a class="btn primary" href="${mapsUrl(go.lat, go.lon)}" target="_blank" rel="noopener">Yol tarifi</a>${guide.button(go.lat, go.lon, s.place || 'Mera')}<button class="btn" data-act="map" data-v="${n}">Haritada</button><button class="btn" data-act="copy" data-v="${n}">Koordinatı kopyala</button><button class="btn" data-act="weather" data-v="${n}">Hava</button><button class="btn" data-act="save" data-v="${n}">Kaydet</button><button class="btn" data-act="log" data-v="${n}">Av ekle</button></div>
         <div class="row wrap"><span class="mute">Gittiniz mi?</span>${[['iyi', '👍 İyi'], ['kotu', '👎 Kötü'], ['ulasilmaz', '⛔ Ulaşılamıyor']].map(([v, t]) => `<button class="chip${s.mark === v ? ' on' : ''}" data-act="mark" data-v="${n}|${v}">${t}</button>`).join('')}</div></section>`;
 }
 
@@ -201,14 +202,17 @@ function draw(root) {
     // Yeniden cizimde acik satirlar acik kalsin.
     const opened = new Set([...root.querySelectorAll('details.spotrow[open]')].map(d => Number(d.dataset.spot)));
     const busy = status.endsWith('…');
+    const settingsOpen = $('details.settings', root)?.open;
     root.innerHTML = `
     <section class="card hero"><h1>Bölge keşfi</h1><p><b>${esc(area?.name || '…')}</b> <span class="mono">${area ? `${area.lat.toFixed(4)}, ${area.lon.toFixed(4)}` : ''}</span></p>
+        <button class="btn primary big" data-act="biga" ${busy ? 'disabled' : ''}>⌖ Biga ve çevresi: tüm kıyı</button>
+        <div class="row wrap">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(opts.day))}${chips('mode', [['kiyi', 'Kıyıdan'], ['tekne', 'Tekneden']], opts.mode)}</div>
+        <details class="settings" ${settingsOpen || typed ? 'open' : ''}><summary>Başka bölge ve ayarlar</summary>
         <form class="row search" data-form="explore"><input name="q" placeholder="Başka bölge ara" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button></form><div class="chips">${places}</div>
-        <button class="btn" data-act="biga">Biga ve çevresi: tüm kıyı</button>
-        <label class="check"><input type="checkbox" data-field="islands" ${opts.islands ? 'checked' : ''}> Adaları ve karşı kıyıyı da tara</label>
         <p class="mute">Arama yarıçapı</p>${chips('radius', [['15', '15 km'], ['25', '25 km'], ['35', '35 km'], ['45', '45 km']], String(opts.radius))}
-        <div class="row wrap">${chips('mode', [['kiyi', 'Kıyıdan'], ['tekne', 'Tekneden']], opts.mode)}${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(opts.day))}</div>
-        <button class="btn primary big" data-act="run" ${busy ? 'disabled' : ''}>Meraları bul</button><p class="${busy ? 'mute' : 'bad'}">${esc(status)}</p></section>
+        <label class="check"><input type="checkbox" data-field="islands" ${opts.islands ? 'checked' : ''}> Adaları ve karşı kıyıyı da tara</label>
+        <button class="btn big" data-act="run" ${busy ? 'disabled' : ''}>Seçili bölgede meraları bul</button></details>
+        <p class="${busy ? 'mute' : 'bad'}" role="status">${esc(status)}</p></section>
     ${result ? `<div class="row wrap between"><b>${esc(result.area.name)}: ${result.spots.length} nokta · ${new Date(result.at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${result.day ? ' · yarın için' : ''}</b><span class="row"><button class="chip${opts.quiet ? ' on' : ''}" data-act="quiet">Yalnız bakir adayları</button><button class="btn" data-act="allmap">Tümü haritada</button><button class="btn" data-act="gpx">GPX</button></span></div>
         ${Date.now() - result.at > 3 * 3600000 ? '<p class="banner warn">Bu sonuçlar 3 saatten eski. Güncel saat ve güvenlik için yeniden tarayın.</p>' : ''}
         <div class="row">${chips('sort', [['puan', 'Puana göre'], ['sira', 'Kıyı sırası (batıdan doğuya)'], ['yakin', 'Yakına göre']], opts.sort)}</div>

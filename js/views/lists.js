@@ -1,6 +1,7 @@
 // Noktalarim, Planlarim, Takim cantasi, Ayarlar.
 import * as C from '../core.js';
 import { TECHNIQUES, SAMPLE_SPOTS, LEGAL_URL } from '../species.js';
+import * as guide from '../guide.js';
 import { app, $, esc, uid, options, toast, download, persist, mapsUrl, locate, copy, SAFETY } from '../ui.js';
 import { scanSpots, icsFile } from '../planner.js';
 import { getAi, setAi } from '../ai.js';
@@ -30,7 +31,7 @@ export const spots = {
         ${app.state.spots.map(s => `<section class="card"><div class="row between"><h2>${esc(s.name)}</h2><span class="pill mute" id="sc-${s.id}">${s.water === 'tatli' ? 'Tatlı su' : 'Deniz'}</span></div>
             <p class="mono">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</p>${s.note ? `<p>${esc(s.note)}</p>` : ''}
             <div class="row wrap"><button class="btn primary" data-act="plan" data-v="${s.id}">Planla</button><button class="btn" data-act="show" data-v="${s.id}">Haritada</button>
-            <a class="btn" href="${mapsUrl(s.lat, s.lon)}" target="_blank" rel="noopener">Yol tarifi</a><button class="btn" data-act="edit" data-v="${s.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${s.id}">Sil</button></div></section>`).join('')
+            <a class="btn" href="${mapsUrl(s.lat, s.lon)}" target="_blank" rel="noopener">Yol tarifi</a>${guide.button(s.lat, s.lon, s.name)}<button class="btn" data-act="edit" data-v="${s.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${s.id}">Sil</button></div></section>`).join('')
         || empty('Henüz kayıtlı noktanız yok. Haritadan bir nokta seçip kaydedin.')}`;
     },
     actions: {

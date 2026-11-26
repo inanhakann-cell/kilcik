@@ -2,11 +2,16 @@
 import { num, toMs, seaBearing } from './core.js';
 import { cacheGet, cacheSet } from './store.js';
 
-export async function getJson(url, ms = 15000) {
+export async function getJson(url, ms = 15000, retry = true) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), ms);
     try {
         const res = await fetch(url, { signal: ctrl.signal });
+        // Open-Meteo art arda istekte kisa sure "cok istek" der; bir kez bekleyip yeniden denenir.
+        if (res.status === 429 && retry && url.includes('open-meteo.com')) {
+            await new Promise(done => setTimeout(done, 4000));
+            return await getJson(url, ms, false);
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
     } finally { clearTimeout(timer); }

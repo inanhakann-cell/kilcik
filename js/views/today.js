@@ -3,11 +3,13 @@ import * as C from '../core.js';
 import * as api from '../api.js';
 import { contextFor, planFor, datesOf } from '../planner.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
-import { findPlaces, cachedPlaces, seenNearby, distanceKm } from '../places.js';
+import { findPlaces, cachedPlaces, coastPlaces, seenNearby, distanceKm } from '../places.js';
 import { SPECIES, SAMPLE_SPOTS } from '../species.js';
 import { ruleFor, inClosedSeason, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
 import * as session from '../session.js';
+import * as guide from '../guide.js';
+import * as install from '../install.js';
 import { app, $, esc, chips, toast, locate, SAFETY } from '../ui.js';
 
 const REFRESH_MS = 30 * 60000;
@@ -54,7 +56,8 @@ async function compute() {
         }
         const mine = app.state.spots.map(s => ({ ...s, mine: true, bonus: 0, km: distanceKm(area.lat, area.lon, s.lat, s.lon) })).filter(s => s.km <= 60);
         const places = [...mine, ...found.filter(p => !mine.some(m => distanceKm(m.lat, m.lon, p.lat, p.lon) < 0.5))].slice(0, 14);
-        // Secilen nokta yalnizca gercekten kiyidaysa mera sayilir (ilce merkezi gibi ic noktalar degil).
+        // Yer listesi bossa uygulamayla gelen kiyi cizgisinden en yakin noktalar kullanilir (ic noktalar mera sayilmaz).
+        if (!places.length) places.push(...await coastPlaces(area.lat, area.lon));
         if (!places.length) {
             const shore = await api.shoreInfo(area.lat, area.lon).catch(() => null);
             if (shore && shore.wetShare > 0 && shore.elevation <= 15) places.push({ id: 'area', name: `${area.name} (seçilen kıyı noktası)`, lat: area.lat, lon: area.lon, water: 'tuzlu', bonus: 0, km: 0 });
@@ -110,7 +113,7 @@ const fishRow = f => `<div class="species${f.closed ? ' closed' : ''}"><b>${esc(
     <small>${esc(f.why.join(' · '))}</small><small>Yem: ${esc(f.bait)}${ruleFor(f.name) ? ` · ${esc(ruleText(ruleFor(f.name)))}` : ''}</small></div>`;
 
 // Saat seridi: yukseklik av puani, renk guvenlik
-const strip = plan => `<div class="hours" role="img" aria-label="Saatlik av puanı">${plan.hours.map(h => `<div title="${C.hhmm(h.row.time)} · ${h.score ?? '--'}"><i class="${h.safety.level}" style="height:${Math.max(6, h.score ?? 0)}%"></i><small>${h.row.time.slice(11, 13)}</small></div>`).join('')}</div>`;
+const strip = plan => `<div class="hours" role="img" aria-label="Saatlik av puanı">${plan.hours.map(h => `<div title="${C.hhmm(h.row.time)} · ${h.score ?? '--'}"><i class="${h.safety.level}" style="height:${Math.max(6, h.score ?? 0)}%"></i><small>${Number(h.row.time.slice(11, 13)) % 3 ? '' : h.row.time.slice(11, 13)}</small></div>`).join('')}</div>`;
 const VERDICT = { go: ['Gidilir', 'ok'], caution: ['Gidilir, dikkatli ol', 'warn'], nogo: ['Gitme', 'bad'], unknown: ['Karar yok', 'mute'] };
 
 // Eski tahminle asla "gidilir" denmez.
@@ -145,7 +148,7 @@ function hero(item) {
         ${w?.peak.safety.reasons.length ? `<p class="${cls}">${esc(w.peak.safety.reasons.join(' '))}</p>` : ''}
         ${strip(plan)}
         <div class="chips">${top.map(f => `<span class="chip"><b>${esc(f.name)}</b> ${span(f.from, f.to)} · ${f.score}</span>`).join('')}</div>
-        <div class="row wrap"><button class="btn primary" data-act="plan" data-v="${p.id}">Ayrıntılı plan</button><button class="btn" data-act="show" data-v="${p.id}">Haritada</button>${p.mine ? '' : `<button class="btn" data-act="save" data-v="${p.id}">Kaydet</button>`}</div>
+        <div class="row wrap"><button class="btn primary" data-act="plan" data-v="${p.id}">Ayrıntılı plan</button>${guide.button(p.lat, p.lon, p.name)}<button class="btn" data-act="show" data-v="${p.id}">Haritada</button>${p.mine ? '' : `<button class="btn" data-act="save" data-v="${p.id}">Kaydet</button>`}</div>
         ${reason.length ? `<details><summary>Neden bu puan?</summary>${reason.map(([c, icon, text]) => `<p class="${c}">${icon} ${esc(text)}</p>`).join('')}</details>` : ''}
         ${fish.length ? `<details><summary>Tüm balıklar ve yemler</summary>${fish.slice(0, 8).map(fishRow).join('')}</details>` : ''}</section>`;
 }
@@ -194,22 +197,27 @@ function draw(root) {
     const typed = $('[data-form="area"] input', root)?.value || '';
     const open = $('details.area', root)?.open;
     const ready = result && result.day === day;
+    const first = ready && result.items.length ? result.items[0] : null;
+    const rest = first ? result.items.slice(1, 7) : [];
     root.innerHTML = `
-    <div class="row between top"><div><h2>${esc(area?.name || 'Bölge')}</h2><p class="mute">${busy ? esc(progress) : result ? `Güncellendi ${new Date(result.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p></div><span class="row"><button class="btn" data-act="download" ${busy ? 'disabled' : ''}>⤓ İndir</button><button class="btn" data-act="refresh" ${busy ? 'disabled' : ''}>Yenile</button></span></div>
-    <button class="btn primary big" data-act="explore">⌖ Bölgedeki meraları bul (koordinat, derinlik, dip, balık)</button>
-    ${session.card()}
-    <div class="row between top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(day))}</div>
+    <div class="row between top"><div><h2>${esc(area?.name || 'Bölge')}</h2><p class="mute">${busy ? esc(progress) : result ? `Güncellendi ${new Date(result.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p></div><span class="row"><button class="btn icon" data-act="download" aria-label="İnternetsiz kullanım için indir" title="İndir" ${busy ? 'disabled' : ''}>⤓</button><button class="btn icon" data-act="refresh" aria-label="Yenile" title="Yenile" ${busy ? 'disabled' : ''}>⟳</button></span></div>
+    ${session.active() ? session.card() : ''}
+    <div class="row top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(day))}</div>
+    <div class="cols"><div>
+    ${first ? hero(first) : `<section class="card">${busy || searching ? 'Hesaplanıyor…' : ready ? 'Seçtiğiniz yer denizden uzakta veya kıyı yeri bulunamadı. Aşağıdaki “Bölgedeki meraları bul” düğmesiyle kıyıyı tarayın.' : 'Henüz veri yok. İnternet bağlantısını kontrol edip yenileyin.'}</section>`}
+    ${closed.length ? `<p class="banner bad">Bugün av yasağında: ${esc(closed.join(', '))}</p>` : ''}
+    ${(result?.notes || []).map(n => `<p class="banner warn">${esc(n)}</p>`).join('')}
+    <button class="btn primary big" data-act="explore">⌖ Bölgedeki meraları bul</button>
+    ${session.active() ? '' : session.card()}
     <details class="card area" ${open || typed ? 'open' : ''}><summary>Bölge değiştir</summary>
         <form class="row search" data-form="area"><input name="q" placeholder="Ör. Bandırma" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button><button type="button" class="btn" data-act="here">Konumum</button></form><div id="areas" class="chips">${places}</div></details>
     ${searching ? '<p class="banner warn">Yakındaki kıyı yerleri aranıyor; sonuçlar hazır olunca genişler.</p>' : ''}
-    ${searchFailed ? '<p class="banner warn">Yer arama servisi şu an dolu. Birazdan Yenile deyin.</p>' : ''}
-    ${(result?.notes || []).map(n => `<p class="banner warn">${esc(n)}</p>`).join('')}
-    ${closed.length ? `<p class="banner bad">Bugün av yasağında: ${esc(closed.join(', '))}</p>` : ''}
-    ${!ready || !result.items.length ? `${weatherStrip()}<section class="card">${busy || searching ? 'Hesaplanıyor…' : ready ? 'Seçtiğiniz yer denizden uzakta veya kıyı yeri bulunamadı. Yukarıdaki “Bölgedeki meraları bul” düğmesiyle kıyıyı tarayın.' : 'Henüz veri yok. İnternet bağlantısını kontrol edip Yenile deyin.'}</section>` : `
-    <div class="cols"><div>${hero(result.items[0])}${weatherStrip()}</div><div>
-    ${result.items.length > 1 ? `<h3>Diğer yerler</h3>${result.items.slice(1, 7).map((x, i) => placeCard(x, i + 1)).join('')}` : ''}
-    <section class="card"><h2>Bu hafta en iyi günler</h2>${result.week.map(x => `<button class="window" data-act="weekday" data-v="${x.p.id}|${x.date}"><b>${esc(dayName(x.date))}</b><span class="pill ${SAFETY[x.w.peak.safety.level][1]}">${x.w.score}</span><small>${esc(x.p.name)} · ${span(x.w.from, x.w.to)}</small></button>`).join('') || '<p>Güvenli pencere yok.</p>'}</section></div></div>
-    <details class="card"><summary>Bu puanlar ne demek?</summary><p class="mute">Koşulların balığa ve avcılığa ne kadar uyduğuna dair kural tabanlı tahmindir; balık garantisi veya ölçülmüş olasılık değildir. Hava modeli birkaç km çözünürlüklüdür. Yer önerileri OpenStreetMap kayıtlarıdır; avın serbest ve ulaşımın güvenli olduğunu yerinde kontrol edin. Günlüğe av ve boş seans girdikçe puan ağırlıkları size göre ayarlanır.</p></details>`}`;
+    ${searchFailed ? '<p class="banner warn">Yer arama servisi şu an yanıt vermiyor; iskele ve mendirek adları eksik olabilir. Birazdan yenileyin.</p>' : ''}
+    ${weatherStrip()}</div><div>
+    ${rest.length ? `<h3>Diğer yerler</h3>${rest.map((x, i) => placeCard(x, i + 1)).join('')}` : ''}
+    ${first ? `<section class="card"><h2>Bu hafta en iyi günler</h2>${result.week.map(x => `<button class="window" data-act="weekday" data-v="${x.p.id}|${x.date}"><b>${esc(dayName(x.date))}</b><span class="pill ${SAFETY[x.w.peak.safety.level][1]}">${x.w.score}</span><small>${esc(x.p.name)} · ${span(x.w.from, x.w.to)}</small></button>`).join('') || '<p>Güvenli pencere yok.</p>'}</section>
+    <details class="card"><summary>Bu puanlar ne demek?</summary><p class="mute">Koşulların balığa ve avcılığa ne kadar uyduğuna dair kural tabanlı tahmindir; balık garantisi veya ölçülmüş olasılık değildir. Hava modeli birkaç km çözünürlüklüdür. Yer önerileri OpenStreetMap kayıtlarıdır; avın serbest ve ulaşımın güvenli olduğunu yerinde kontrol edin. Günlüğe av ve boş seans girdikçe puan ağırlıkları size göre ayarlanır.</p></details>` : ''}
+    ${install.card()}</div></div>`;
 }
 
 export function render(root) {

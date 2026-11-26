@@ -2,6 +2,7 @@
 import * as api from '../api.js';
 import { validCoord } from '../core.js';
 import * as scan from './scan.js';
+import * as guide from '../guide.js';
 import { app, $, esc, uid, toast, locate, persist, mapsUrl } from '../ui.js';
 
 let map = null;
@@ -31,6 +32,7 @@ function popupFor(lat, lon, name, extra = '') {
     box.className = 'popup';
     box.innerHTML = `<b>${esc(name)}</b><br><span class="mono">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>${extra}
         <button class="btn primary" data-p="weather">Hava durumu</button>
+        <button class="btn" data-p="guide">Noktaya götür</button>
         <button class="btn" data-p="plan">Burada planla</button>
         <button class="btn" data-p="save">Noktayı kaydet</button>
         <button class="btn" data-p="log">Buraya av ekle</button>
@@ -38,6 +40,7 @@ function popupFor(lat, lon, name, extra = '') {
     box.addEventListener('click', async e => {
         const act = e.target.dataset?.p;
         const named = name === 'Seçilen nokta' ? '' : name;
+        if (act === 'guide') return guide.open(lat, lon, name);
         if (act === 'weather') app.go('hava', { point: { lat, lon, name: named || 'Seçilen nokta' } });
         if (act === 'plan') app.go('plan', { draft: { lat, lon, name: named } });
         if (act === 'log') app.go('gunluk', { lat, lon, spot: named });

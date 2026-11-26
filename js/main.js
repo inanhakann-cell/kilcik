@@ -10,8 +10,13 @@ import * as today from './views/today.js';
 import * as weather from './views/weather.js';
 import * as explore from './views/explore.js';
 import * as session from './session.js';
+import * as more from './views/more.js';
+import * as guide from './guide.js';
+import * as install from './install.js';
 
-const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings };
+const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings, daha: more };
+// Telefonda "Daha" altinda duran ekranlar
+const IN_MORE = ['plan', 'noktalar', 'planlar', 'takim', 'turler', 'ayarlar'];
 let current = 'bugun';
 const root = () => $(`#view-${current}`);
 
@@ -28,7 +33,7 @@ app.go = (name, params = {}, fromHistory = false) => {
     current = next;
     if (current === 'plan' && params.draft) plan.openPlan(params.draft);
     document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== `view-${current}`; });
-    document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', b.dataset.nav === current ? 'page' : 'false'));
+    document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', b.dataset.nav === current || (b.dataset.nav === 'daha' && IN_MORE.includes(current)) ? 'page' : 'false'));
     $('#back').hidden = depth === 0;
     VIEWS[current].render(root(), params);
     window.scrollTo(0, fromHistory ? positions[depth] || 0 : 0);
@@ -36,12 +41,20 @@ app.go = (name, params = {}, fromHistory = false) => {
 
 history.replaceState({ view: 'bugun', depth: 0 }, '');
 window.addEventListener('popstate', e => {
+    if (guide.close()) return;
     depth = e.state?.depth || 0;
     app.go(e.state?.view || 'bugun', {}, true);
 });
 
 document.addEventListener('click', e => {
     if (e.target.closest('#back')) return history.back();
+    const lead = e.target.closest('[data-guide]');
+    if (lead) {
+        const [lat, lon] = lead.dataset.guide.split(',').map(Number);
+        return guide.open(lat, lon, lead.dataset.name);
+    }
+    const setup = e.target.closest('[data-install]');
+    if (setup) return install.choose(setup.dataset.install, setup.closest('.install'));
     const nav = e.target.closest('[data-nav]');
     if (nav) return app.go(nav.dataset.nav);
     const el = e.target.closest('[data-act]');
@@ -57,6 +70,19 @@ document.addEventListener('submit', e => {
     VIEWS[current].submit?.(e.target, root());
 });
 
+// Klavye acikken alt cubuk yazi alanini kapatmasin.
+const TEXT = 'textarea,input:not([type=checkbox]):not([type=radio]):not([type=file])';
+document.addEventListener('focusin', e => document.body.classList.toggle('typing', e.target.matches(TEXT)));
+document.addEventListener('focusout', () => document.body.classList.remove('typing'));
+
+let lastY = 0;
+window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    if (Math.abs(y - lastY) < 8) return;
+    document.body.classList.toggle('reading', y > lastY && y > 90);
+    lastY = y;
+}, { passive: true });
+
 const net = () => { $('#offline').hidden = navigator.onLine; };
 window.addEventListener('online', net);
 window.addEventListener('offline', net);
@@ -67,6 +93,9 @@ try {
     await session.init();
     net();
     app.go('bugun');
+    // Ana ekran simgesine basili tutunca acilan kisayollar
+    const start = new URLSearchParams(location.search).get('git');
+    if (start) app.go(start);
     session.backfill().catch(() => {});
     window.addEventListener('online', () => session.backfill().catch(() => {}));
     today.autoRefresh();

@@ -69,6 +69,8 @@ export function card() {
         <div class="row wrap"><button class="btn" data-act="sesend">Avı bitir</button><button class="btn danger" data-act="sescancel">Vazgeç</button></div></section>`;
 }
 
+export const active = () => Boolean(current);
+
 export async function init() {
     current = (await cacheGet(KEY)) || null;
     loaded = true;
@@ -90,6 +92,7 @@ export const actions = refresh => ({
         await store({ ...place, start: Date.now(), fish: 0 });
         toast('Av başladı. Rastgele!', 'ok');
         refresh();
+        document.querySelector('.view:not([hidden]) .session.on')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     },
     sesend: async () => {
         const minutes = Math.round((Date.now() - current.start) / 60000);
