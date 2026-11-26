@@ -8,9 +8,10 @@ import * as species from './views/species.js';
 import { check } from './alerts.js';
 import * as today from './views/today.js';
 import * as weather from './views/weather.js';
+import * as explore from './views/explore.js';
 import * as session from './session.js';
 
-const VIEWS = { bugun: today, hava: weather, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings };
+const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings };
 let current = 'bugun';
 const root = () => $(`#view-${current}`);
 

@@ -29,7 +29,9 @@ export function download(name, text, type) {
 
 export async function copy(text, done) {
     try { await navigator.clipboard.writeText(text); toast(done, 'ok'); }
-    catch { window.prompt('Metni kopyalayın:', text); }
+    catch {
+        try { window.prompt('Metni kopyalayın:', text); } catch { toast(text); }
+    }
 }
 
 export const locate = () => new Promise((resolve, reject) => {

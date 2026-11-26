@@ -1,10 +1,10 @@
 // Harita altindaki mera taramasi: derinlik + dip yapisi + hava + tur uygunlugu.
 import * as C from '../core.js';
 import * as api from '../api.js';
-import { loadGrid, findSpots, describe, substrate, habitatFit } from '../seabed.js';
-import { contextFor, planFor, datesOf } from '../planner.js';
-import { speciesActivity, ownEvidence } from '../activity.js';
-import { seenNearby, restrictedAreas, nearRestricted } from '../places.js';
+import { loadGrid, findSpots, coastSpots, describe } from '../seabed.js';
+import { habitat, evaluate } from '../region.js';
+import { datesOf } from '../planner.js';
+import { seenNearby, restrictedAreas, nearRestricted, coastline } from '../places.js';
 import { app, $, esc, chips, toast, uid, persist, download, copy, mapsUrl, SAFETY } from '../ui.js';
 
 const opts = { mode: 'kiyi', day: 0 };
@@ -14,9 +14,6 @@ let token = 0;
 let view = null; // haritadan: () => { center, radius }, mark: (spots) => void, focus: (spot) => void
 
 export const connect = api_ => { view = api_; };
-
-// 3.60 m bot sinirlari
-const boatOk = r => r.wind <= 14 && r.gust < 17 && r.wave !== null && r.wave <= 0.6 && !(r.code >= 95);
 
 async function run() {
     const mine = ++token;
@@ -30,7 +27,10 @@ async function run() {
         say('Dip yapısı inceleniyor…');
         await new Promise(r => setTimeout(r, 30));
         // "Ulasilamaz" denenler elenir.
-        const found = findSpots(grid, opts.mode, { center: { lat: center.lat, lon: center.lng, radius }, limit: 16 })
+        const here = { lat: center.lat, lon: center.lng, radius };
+        const ways = opts.mode === 'kiyi' ? await coastline(center.lat, center.lng, Math.ceil(radius / 1000)).catch(() => null) : null;
+        const found = (ways ? coastSpots(grid, ways, { center: here, limit: 16, spacing: 300, mainland: false })
+            : findSpots(grid, opts.mode, { center: here, limit: 16 }))
             .filter(s => C.markNear(app.state.marks, s.lat, s.lon)?.verdict !== 'ulasilmaz').slice(0, 10);
         if (!found.length) throw new Error(opts.mode === 'kiyi' ? 'Bu alanda kıyıdan atışa uygun deniz noktası bulunamadı. Haritayı bir kıyıya getirin.' : 'Bu alanda tekne için uygun derinlikte nokta bulunamadı.');
         say('Hava, deniz ve rüzgar verisi alınıyor…');
@@ -40,28 +40,9 @@ async function run() {
         const month = Number(date.slice(5, 7));
         const seen = await seenNearby(center.lat, center.lng, month).catch(() => ({}));
         say(`Dip tipi ve tür uygunluğu: ${found.length} nokta…`);
-        const bottoms = await Promise.all(found.map(s => substrate(s.lat, s.lon).catch(() => null)));
-        const spots = found.map((s, i) => {
-            const bottom = bottoms[i];
-            const ctx = contextFor({ lat: s.lat, lon: s.lon, water: 'tuzlu', technique: app.draft.technique }, s.f.seaward);
-            const plan = planFor(pack, ctx, date);
-            const hours = opts.mode === 'tekne' ? plan.hours.filter(h => h.score !== null && boatOk(h.row)) : plan.hours;
-            const evidence = { seen, own: ownEvidence(app.state.catches, s.lat, s.lon, month) };
-            const fish = speciesActivity(pack, hours, { salt: true, evidence })
-                .map(f => ({ ...f, score: Math.min(95, Math.round(f.score * habitatFit(f.name, s.f, bottom))) }))
-                .filter(f => !f.closed).sort((a, b) => b.score - a.score).slice(0, 3);
-            const best = opts.mode === 'tekne' ? hours.reduce((a, h) => (!a || h.score > a.score ? h : a), null) : plan.windows[0]?.peak;
-            const peak = best?.row;
-            const shore = peak ? C.windToShore(peak.dir, s.f.seaward) : null;
-            const exposure = opts.mode === 'tekne' || !shore ? 0 : shore === 'karşıdan' ? (peak.wind > 15 ? -10 : peak.wind >= 5 ? 5 : 0) : 0;
-            const safe = best ? (opts.mode === 'tekne' ? 'caution' : best.safety.level) : 'nogo';
-            const conditions = best?.score ?? 0;
-            const mark = C.markNear(app.state.marks, s.lat, s.lon)?.verdict || null;
-            const total = Math.max(0, Math.min(99, Math.round(0.5 * s.structure + 0.25 * conditions + 0.25 * (fish[0]?.score || 0) + (bottom?.bonus || 0) + exposure + (mark === 'iyi' ? 12 : mark === 'kotu' ? -20 : 0))));
-            const window = !best ? null : opts.mode === 'tekne' ? { from: peak.time, to: C.localIso(C.toMs(peak.time, pack.offset) + 3600000, pack.offset) } : plan.windows[0];
-            const own = Object.values(evidence.own).reduce((a, b) => a + b, 0);
-            return { ...s, mark, bottom, fish, shore, safe, total: best ? total : 0, window, own, reasons: best?.safety.reasons || [] };
-        }).sort((a, b) => b.total - a.total).slice(0, 8);
+        const bottoms = await Promise.all(found.map(s => habitat(s.lat, s.lon)));
+        const spots = found.map((s, i) => evaluate({ spot: s, pack, date, mode: opts.mode, bottom: bottoms[i], seen }))
+            .sort((a, b) => b.total - a.total).slice(0, 8);
         if (mine !== token) return;
         result = { spots, date, mode: opts.mode, at: Date.now(), checked: 'bekliyor' };
         // Yavas olabilen alan kontrolu sonuclari bekletmez.

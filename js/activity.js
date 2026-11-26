@@ -14,7 +14,7 @@ const HABIT = {
 };
 
 // Her turun en verimli aylari (genel balikcilik bilgisi); diger sezon aylari daha dusuk agirlik alir.
-const PEAK = {
+export const PEAK = {
     'Levrek': [11, 12, 1, 2], 'Lüfer / Çinekop': [9, 10, 11], 'Palamut': [9, 10], 'İstavrit': [9, 10, 11, 12], 'Çipura': [9, 10], 'Mırmır': [6, 7, 8, 9],
     'Karagöz / Sargoz': [5, 6, 9, 10], 'Kalamar': [11, 12, 1], 'Sübye': [3, 4, 5], 'Zargana': [4, 5, 10], 'Kefal': [6, 7, 8, 9], 'İzmarit': [2, 3, 11],
     'Sazan': [5, 6, 9], 'Turna': [11, 3, 4], 'Sudak': [5, 9, 10], 'Yayın': [6, 7, 8], 'Tatlı su levreği': [4, 9, 10], 'Alabalık': [4, 5], 'Tatlı su kefali': [5, 6, 9]

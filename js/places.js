@@ -49,10 +49,72 @@ export async function findPlaces(lat, lon, km = 25, limit = 10) {
     return list;
 }
 
+/** Yerlesimler ve insan eliyle kiyi yapilari (OpenStreetMap). */
+export async function humanPoints(lat, lon, km) {
+    const local = await bundled(lat, lon, km - 3);
+    if (local?.structures) return { settlements: local.settlements.map(([name, a, b]) => ({ name, lat: a, lon: b })), structures: local.structures.map(([a, b]) => ({ lat: a, lon: b })) };
+    const around = `(around:${Math.round(km * 1000)},${lat},${lon})`;
+    const r = await overpass(`[out:json][timeout:30];(node["place"~"^(city|town|village|hamlet|suburb|neighbourhood)$"]${around};nwr["man_made"~"^(pier|breakwater)$"]${around};nwr["leisure"~"^(fishing|marina|beach_resort)$"]${around};nwr["tourism"="camp_site"]${around};);out center 900;`);
+    const out = { settlements: [], structures: [] };
+    for (const e of r.elements) {
+        const p = e.center || e;
+        if (!Number.isFinite(p.lat)) continue;
+        if (e.tags?.place) { if (e.tags.name) out.settlements.push({ name: e.tags.name, lat: p.lat, lon: p.lon }); }
+        else out.structures.push({ lat: p.lat, lon: p.lon });
+    }
+    return out;
+}
+
+/** Bolgedeki fotografli balik ve kafadanbacakli gozlemleri (iNaturalist). */
+export async function observations(lat, lon, km) {
+    // 47178: isinsal yuzgecli baliklar, 47459: kafadanbacaklilar
+    const r = await getJson(`https://api.inaturalist.org/v1/observations?lat=${lat.toFixed(3)}&lng=${lon.toFixed(3)}&radius=${km}&taxon_id=47178,47459&photos=true&per_page=24&order_by=observed_on&locale=tr`);
+    return r.results.filter(x => x.photos?.[0]?.url && x.taxon).map(x => {
+        const [a, o] = (x.location || '').split(',').map(Number);
+        return { name: x.taxon.preferred_common_name || x.taxon.name, date: x.observed_on || '', lat: Number.isFinite(a) ? Number(a.toFixed(4)) : null, lon: Number.isFinite(o) ? Number(o.toFixed(4)) : null, photo: x.photos[0].url.replace('square', 'small'), by: x.photos[0].attribution || '', url: `https://www.inaturalist.org/observations/${x.id}` };
+    });
+}
+
+/** Koordinata en yakin koy/mahalle adi (OpenStreetMap Nominatim; saniyede en fazla bir istek). */
+export async function placeName(lat, lon) {
+    const r = await getJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&accept-language=tr`);
+    const a = r.address || {};
+    const name = a.village || a.neighbourhood || a.suburb || a.hamlet || a.town || a.city_district || '';
+    const district = a.town || a.county || a.city || '';
+    return [name && `${name} kıyısı`, district !== name && district].filter(Boolean).join(', ');
+}
+
+let bundle;
+/** Uygulamayla gelen Biga cevresi verisi; istenen alan tamamen icindeyse dondurur. */
+export async function bundled(lat, lon, km) {
+    bundle ||= getJson('data/biga-kiyi.json').catch(() => { bundle = null; return null; });
+    const data = await bundle;
+    if (!data) return null;
+    const [south, west, north, east] = data.box;
+    const dLat = km / 111.32, dLon = km / (111.32 * Math.cos(lat * Math.PI / 180));
+    return lat - dLat >= south && lat + dLat <= north && lon - dLon >= west && lon + dLon <= east ? data : null;
+}
+
+/** Kiyi cizgisi parcalari: [[{lat, lon}, ...], ...]. Haftalarca degismez, cihazda saklanir. */
+export async function coastline(lat, lon, km) {
+    const local = await bundled(lat, lon, km);
+    if (local) return local.ways.map(w => w.map(([a, b]) => ({ lat: a, lon: b })));
+    const key = `coast:${lat.toFixed(2)},${lon.toFixed(2)},${km}`;
+    const cached = await cacheGet(key);
+    if (cached) return cached;
+    const dLat = km / 111.32, dLon = km / (111.32 * Math.cos(lat * Math.PI / 180));
+    const r = await overpass(`[out:json][timeout:60];way["natural"="coastline"](${(lat - dLat).toFixed(3)},${(lon - dLon).toFixed(3)},${(lat + dLat).toFixed(3)},${(lon + dLon).toFixed(3)});out geom;`);
+    const ways = r.elements.filter(e => e.geometry?.length > 1).map(e => e.geometry.map(p => ({ lat: p.lat, lon: p.lon })));
+    if (!ways.length) throw new Error('Kıyı çizgisi bulunamadı.');
+    await cacheSet(key, ways);
+    return ways;
+}
+
 /** Liman, marina, sanayi ve askeri alanlarin sinir kutulari (OpenStreetMap). */
 export async function restrictedAreas(lat, lon, km) {
+    const local = await bundled(lat, lon, km - 1);
     const around = `(around:${Math.round(km * 1000)},${lat},${lon})`;
-    const r = await overpass(`[out:json][timeout:25];(nwr["landuse"~"^(industrial|military|harbour|port)$"]${around};nwr["military"]${around};nwr["leisure"="marina"]${around};nwr["seamark:type"="harbour"]${around};nwr["industrial"="port"]${around};);out tags bb 300;`);
+    const r = local?.restricted ? { elements: local.restricted } : await overpass(`[out:json][timeout:25];(nwr["landuse"~"^(industrial|military|harbour|port)$"]${around};nwr["military"]${around};nwr["leisure"="marina"]${around};nwr["seamark:type"="harbour"]${around};nwr["industrial"="port"]${around};);out tags bb 300;`);
     const kind = t => (t.military || t.landuse === 'military' ? 'askeri alan' : t.leisure === 'marina' ? 'marina' : /harbour|port/.test(`${t.landuse} ${t.industrial} ${t['seamark:type']}`) ? 'liman' : 'sanayi alanı');
     return r.elements.map(e => {
         const b = e.bounds || (e.lat !== undefined ? { minlat: e.lat, maxlat: e.lat, minlon: e.lon, maxlon: e.lon } : null);

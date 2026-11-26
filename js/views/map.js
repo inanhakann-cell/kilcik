@@ -89,7 +89,7 @@ export function render(root, params = {}) {
     root.innerHTML = `
     <form class="row search" data-form="search"><input name="q" placeholder="Yer ara (ör. Karabiga)" aria-label="Yer ara"><button class="btn">Ara</button></form>
     <div id="results" class="chips"></div>
-    <div class="row wrap"><button class="btn" data-act="locate">Konumum</button><button class="btn" data-act="radar">Yağış radarı</button><button class="btn" data-act="wind">Rüzgar haritası</button></div>
+    <div class="row wrap"><button class="btn primary" data-act="explore">Bölge keşfi</button><button class="btn" data-act="locate">Konumum</button><button class="btn" data-act="radar">Yağış radarı</button><button class="btn" data-act="wind">Rüzgar haritası</button></div>
     <p class="mute">${params.pick ? 'Plan için haritada bir noktaya dokunun.' : 'Haritaya dokunun. Sarı: noktalarım, kırmızı: avlarım.'}</p>
     <div id="map-slot"></div>
     <div id="scan-panel"></div>`;
@@ -97,6 +97,11 @@ export function render(root, params = {}) {
     $('#map-slot').append(host);
     scan.connect(scanView);
     scan.paint();
+    if (params.spots) {
+        scanView.mark(params.spots);
+        const one = params.spots[params.show];
+        setTimeout(() => (one ? map.setView([one.lat, one.lon], 15) : map.fitBounds(params.spots.map(s => [s.lat, s.lon]))), 120);
+    }
     drawMarks();
     setTimeout(() => map.invalidateSize(), 50);
     if (params.focus) { map.setView([params.focus.lat, params.focus.lon], 14); select(params.focus.lat, params.focus.lon, params.focus.name); }
@@ -121,6 +126,7 @@ const scanView = {
 
 export const actions = {
     ...scan.actions,
+    explore: () => { const c = map.getCenter().wrap(); app.go('kesif', { area: { lat: c.lat, lon: c.lng, name: 'Haritada seçilen alan' } }); },
     locate: async () => {
         try { const p = await locate(); map.setView([p.lat, p.lon], 14); select(p.lat, p.lon, `Konumum (±${p.accuracy} m)`); }
         catch (err) { toast(err.message, 'bad'); }

@@ -54,7 +54,11 @@ async function compute() {
         }
         const mine = app.state.spots.map(s => ({ ...s, mine: true, bonus: 0, km: distanceKm(area.lat, area.lon, s.lat, s.lon) })).filter(s => s.km <= 60);
         const places = [...mine, ...found.filter(p => !mine.some(m => distanceKm(m.lat, m.lon, p.lat, p.lon) < 0.5))].slice(0, 14);
-        if (!places.length) places.push({ id: 'area', name: area.name, lat: area.lat, lon: area.lon, water: 'tuzlu', bonus: 0, km: 0 });
+        // Secilen nokta yalnizca gercekten kiyidaysa mera sayilir (ilce merkezi gibi ic noktalar degil).
+        if (!places.length) {
+            const shore = await api.shoreInfo(area.lat, area.lon).catch(() => null);
+            if (shore && shore.wetShare > 0 && shore.elevation <= 15) places.push({ id: 'area', name: `${area.name} (seçilen kıyı noktası)`, lat: area.lat, lon: area.lon, water: 'tuzlu', bonus: 0, km: 0 });
+        }
 
         const month = new Date().getMonth() + 1;
         const seen = await seenNearby(area.lat, area.lon, month).catch(() => { notes.push('Gözlem kayıtları alınamadı.'); return {}; });
@@ -136,7 +140,7 @@ function hero(item) {
     const reason = [...factors.slice(0, 3).map(f => ['ok', '✓', f.text]), ...factors.slice(-2).filter(f => f.points / f.max < 0.6).map(f => ['warn', '△', f.text])];
     return `<section class="card hero"><div class="score">
         <div class="ring" style="--p:${plan.score ?? 0}"><b>${plan.score ?? '--'}</b></div>
-        <div><p class="verdict ${cls}">${day ? 'Yarın' : 'Bugün'}: ${word}</p><h1>${esc(p.name)}</h1><p class="mute">${p.km.toFixed(1)} km${item.shoreWind ? ` · rüzgar ${item.shoreWind}` : ''}</p></div></div>
+        <div><p class="verdict ${cls}">${day ? 'Yarın' : 'Bugün'}: ${word}</p><h1>${esc(p.name)}</h1><p class="mono">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p><p class="mute">${p.km.toFixed(1)} km${item.shoreWind ? ` · rüzgar ${item.shoreWind}` : ''}</p></div></div>
         ${w ? `<p class="best">En iyi saat <b>${span(w.from, w.to)}</b>${plan.windows[1] ? ` <span class="mute">· ikinci ${span(plan.windows[1].from, plan.windows[1].to)}</span>` : ''}</p>` : `<p class="bad">${plan.allUnsafe ? 'Güvenli saat yok.' : 'Bugün için saat kalmadı; Yarın’a bakın.'}</p>`}
         ${w?.peak.safety.reasons.length ? `<p class="${cls}">${esc(w.peak.safety.reasons.join(' '))}</p>` : ''}
         ${strip(plan)}
@@ -192,6 +196,7 @@ function draw(root) {
     const ready = result && result.day === day;
     root.innerHTML = `
     <div class="row between top"><div><h2>${esc(area?.name || 'Bölge')}</h2><p class="mute">${busy ? esc(progress) : result ? `Güncellendi ${new Date(result.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p></div><span class="row"><button class="btn" data-act="download" ${busy ? 'disabled' : ''}>⤓ İndir</button><button class="btn" data-act="refresh" ${busy ? 'disabled' : ''}>Yenile</button></span></div>
+    <button class="btn primary big" data-act="explore">⌖ Bölgedeki meraları bul (koordinat, derinlik, dip, balık)</button>
     ${session.card()}
     <div class="row between top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(day))}</div>
     <details class="card area" ${open || typed ? 'open' : ''}><summary>Bölge değiştir</summary>
@@ -200,7 +205,7 @@ function draw(root) {
     ${searchFailed ? '<p class="banner warn">Yer arama servisi şu an dolu. Birazdan Yenile deyin.</p>' : ''}
     ${(result?.notes || []).map(n => `<p class="banner warn">${esc(n)}</p>`).join('')}
     ${closed.length ? `<p class="banner bad">Bugün av yasağında: ${esc(closed.join(', '))}</p>` : ''}
-    ${!ready || !result.items.length ? `${weatherStrip()}<section class="card">${busy ? 'Hesaplanıyor…' : 'Henüz veri yok. İnternet bağlantısını kontrol edip Yenile deyin.'}</section>` : `
+    ${!ready || !result.items.length ? `${weatherStrip()}<section class="card">${busy || searching ? 'Hesaplanıyor…' : ready ? 'Seçtiğiniz yer denizden uzakta veya kıyı yeri bulunamadı. Yukarıdaki “Bölgedeki meraları bul” düğmesiyle kıyıyı tarayın.' : 'Henüz veri yok. İnternet bağlantısını kontrol edip Yenile deyin.'}</section>` : `
     <div class="cols"><div>${hero(result.items[0])}${weatherStrip()}</div><div>
     ${result.items.length > 1 ? `<h3>Diğer yerler</h3>${result.items.slice(1, 7).map((x, i) => placeCard(x, i + 1)).join('')}` : ''}
     <section class="card"><h2>Bu hafta en iyi günler</h2>${result.week.map(x => `<button class="window" data-act="weekday" data-v="${x.p.id}|${x.date}"><b>${esc(dayName(x.date))}</b><span class="pill ${SAFETY[x.w.peak.safety.level][1]}">${x.w.score}</span><small>${esc(x.p.name)} · ${span(x.w.from, x.w.to)}</small></button>`).join('') || '<p>Güvenli pencere yok.</p>'}</section></div></div>
@@ -235,6 +240,7 @@ async function setArea(next) {
 export const actions = {
     ...session.actions(() => paint()),
     download: () => offlineDownload(),
+    explore: () => app.go('kesif', { area: area ? { ...area, name: area.name.replace(/ çevresi$/, '') } : null }),
     weather: () => app.go('hava', { point: area }),
     refresh: () => { searchFailed = ''; compute(); },
     day: v => { day = Number(v); paint(); compute(); },
