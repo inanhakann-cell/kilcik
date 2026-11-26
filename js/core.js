@@ -14,7 +14,7 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const DIRS = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];
 const WIND_NAMES = ['Yıldız', 'Poyraz', 'Gündoğusu', 'Keşişleme', 'Kıble', 'Lodos', 'Günbatısı', 'Karayel'];
 const sector = deg => Math.round((((deg % 360) + 360) % 360) / 45) % 8;
-export const kmh = kt => (isNum(kt) ? `${Math.round(kt * 1.852)} km/s` : '--');
+export const kmh = kt => (isNum(kt) ? `${Math.round(kt * 1.852)} km/sa` : '--');
 export const dirCode = deg => (isNum(deg) ? DIRS[sector(deg)] : '--');
 export const windName = deg => (isNum(deg) ? WIND_NAMES[sector(deg)] : '--');
 export const angleDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
@@ -290,6 +290,19 @@ export const validCoord = (lat, lon) => isNum(lat) && isNum(lon) && Math.abs(lat
 const coordOf = x => ({ lat: num(x.lat, 5), lon: num(x.lon, 5) });
 const list = (v, fn) => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object' && SAFE_ID.test(x.id)).map(fn).filter(Boolean) : []);
 
+export const FLOORS = { kum: 'kum', tas: 'taş / kaya', yosun: 'yosun / erişte', derin: 'derin' };
+
+/** "#nokta=enlem,boylam,ad" bicimindeki baglantidan nokta; gecersizse null. */
+export function parseShared(text) {
+    const m = String(text ?? '').match(/#nokta=(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)(?:,([^\s#]*))?/);
+    if (!m) return null;
+    const lat = Number(Number(m[1]).toFixed(5)), lon = Number(Number(m[2]).toFixed(5));
+    if (!validCoord(lat, lon)) return null;
+    let name = '';
+    try { name = decodeURIComponent(m[3] || ''); } catch { /* bozuk ad yok sayilir */ }
+    return { lat, lon, name: name.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 80) || 'Gönderilen nokta' };
+}
+
 export function sanitizeState(s) {
     const o = s && typeof s === 'object' ? s : {};
     return {
@@ -317,6 +330,11 @@ export function sanitizeState(s) {
             const c = coordOf(x);
             return validCoord(c.lat, c.lon) && MARKS.includes(x.verdict) ? { id: x.id, ...c, verdict: x.verdict, at: str(x.at, 16) } : null;
         }),
+        floors: list(o.floors, x => {
+            const c = coordOf(x);
+            const tags = Array.isArray(x.tags) ? [...new Set(x.tags.filter(t => Object.hasOwn(FLOORS, t)))] : [];
+            return validCoord(c.lat, c.lon) && tags.length ? { id: x.id, ...c, tags, at: str(x.at, 16) } : null;
+        }),
         settings: {
             wind: clamp(num(o.settings?.wind) ?? DEFAULT_LIMITS.wind, 8, 34),
             wave: clamp(num(o.settings?.wave, 2) ?? DEFAULT_LIMITS.wave, 0.3, 2.5),
@@ -330,7 +348,7 @@ export function sanitizeState(s) {
 export function mergeState(current, incoming) {
     const merge = (a, b) => [...new Map([...a, ...b].map(x => [x.id, x])).values()];
     const next = sanitizeState(incoming);
-    return { spots: merge(current.spots, next.spots), catches: merge(current.catches, next.catches), tackle: merge(current.tackle, next.tackle), plans: merge(current.plans, next.plans), marks: merge(current.marks || [], next.marks), settings: current.settings };
+    return { spots: merge(current.spots, next.spots), catches: merge(current.catches, next.catches), tackle: merge(current.tackle, next.tackle), plans: merge(current.plans, next.plans), marks: merge(current.marks || [], next.marks), floors: merge(current.floors || [], next.floors), settings: current.settings };
 }
 
 // v11 / eski surum yedek bicimi

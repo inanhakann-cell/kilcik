@@ -2,7 +2,8 @@
 import * as C from '../core.js';
 import { TECHNIQUES, SAMPLE_SPOTS, LEGAL_URL } from '../species.js';
 import * as guide from '../guide.js';
-import { app, $, esc, uid, options, toast, download, persist, mapsUrl, locate, copy, SAFETY } from '../ui.js';
+import * as extras from '../extras.js';
+import { app, $, esc, uid, options, toast, download, persist, mapsUrl, locate, copy, SAFETY, mapTabs } from '../ui.js';
 import { scanSpots, icsFile } from '../planner.js';
 import { getAi, setAi } from '../ai.js';
 import { askPermission, check } from '../alerts.js';
@@ -23,7 +24,8 @@ let scan = null;
 
 export const spots = {
     render(root) {
-        root.innerHTML = `<div class="row wrap"><button class="btn primary" data-act="add">Haritadan ekle</button>
+        root.innerHTML = `${mapTabs('noktalar')}<div class="row wrap top"><button class="btn primary" data-act="add">Haritadan ekle</button>
+        <button class="btn" data-act="paste">Bağlantıdan ekle</button>
         <button class="btn" data-act="score">Fırsat taraması (7 gün)</button>
         <button class="btn" data-act="gpx" ${app.state.spots.length ? '' : 'disabled'}>GPX indir</button>
         <button class="btn" data-act="samples">Biga–Bozcaada örnekleri</button></div>
@@ -31,11 +33,15 @@ export const spots = {
         ${app.state.spots.map(s => `<section class="card"><div class="row between"><h2>${esc(s.name)}</h2><span class="pill mute" id="sc-${s.id}">${s.water === 'tatli' ? 'Tatlı su' : 'Deniz'}</span></div>
             <p class="mono">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</p>${s.note ? `<p>${esc(s.note)}</p>` : ''}
             <div class="row wrap"><button class="btn primary" data-act="plan" data-v="${s.id}">Planla</button><button class="btn" data-act="show" data-v="${s.id}">Haritada</button>
-            <a class="btn" href="${mapsUrl(s.lat, s.lon)}" target="_blank" rel="noopener">Yol tarifi</a>${guide.button(s.lat, s.lon, s.name)}<button class="btn" data-act="edit" data-v="${s.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${s.id}">Sil</button></div></section>`).join('')
+            <a class="btn" href="${mapsUrl(s.lat, s.lon)}" target="_blank" rel="noopener">Yol tarifi</a>${guide.button(s.lat, s.lon, s.name)}<button class="btn" data-act="edit" data-v="${s.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${s.id}">Sil</button>${extras.shareButton(s.lat, s.lon, s.name)}</div>${extras.floorChips(s.lat, s.lon)}</section>`).join('')
         || empty('Henüz kayıtlı noktanız yok. Haritadan bir nokta seçip kaydedin.')}`;
     },
     actions: {
         add: () => app.go('harita'),
+        paste: async () => {
+            const text = window.prompt('Arkadaşınızın gönderdiği bağlantıyı yapıştırın:');
+            if (text && !(await extras.receive(text))) toast('Bu metinde nokta bağlantısı yok.', 'bad');
+        },
         plan: v => { const s = app.state.spots.find(x => x.id === v); app.go('plan', { draft: { lat: s.lat, lon: s.lon, name: s.name, water: s.water } }); },
         show: v => app.go('harita', { focus: app.state.spots.find(x => x.id === v) }),
         edit: async (v, root) => {
@@ -168,7 +174,7 @@ export const settings = {
                 else await copy(text, 'Konum metni kopyalandı; mesajla gönderin.');
             } catch (err) { toast(err.message, 'bad'); }
         },
-        export: () => (cacheSet('backup:at', Date.now()), download)(`kilcik-yedek-${new Date().toLocaleDateString('sv-SE')}.json`, JSON.stringify({ app: 'KILCIK', ...app.state }), 'application/json')
+        export: () => extras.downloadBackup()
     },
     async submit(form, root) {
         const f = form.elements;

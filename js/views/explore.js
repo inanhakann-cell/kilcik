@@ -10,7 +10,8 @@ import { SPECIES } from '../species.js';
 import { ruleFor, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
 import * as guide from '../guide.js';
-import { app, $, esc, chips, toast, uid, persist, download, copy, mapsUrl, SAFETY } from '../ui.js';
+import * as extras from '../extras.js';
+import { app, $, esc, chips, toast, uid, persist, download, copy, mapsUrl, mapTabs, pill, grade, opened as openFolds, fold, SAFETY } from '../ui.js';
 
 const opts = { radius: 35, day: 0, mode: 'kiyi', quiet: false, sort: 'puan', islands: false };
 // Biga ve cevresinin tum anakara kiyisi bu merkez ve yaricapla kapsanir.
@@ -61,8 +62,10 @@ async function run() {
             ways = await coastline(at.lat, at.lon, opts.radius).catch(() => null);
         }
         const approximate = opts.mode === 'kiyi' && !ways;
-        const candidates = ways ? coastSpots(grid, ways, { center: around, mainland: !opts.islands, spacing: 1500 })
-            : findSpots(grid, opts.mode, { center: around, limit: 80, spacing: 1800, mainland: !opts.islands });
+        // Dar alanda (haritadan tarama) noktalar sik aralikla aranir.
+        const near = opts.radius <= 8;
+        const candidates = ways ? coastSpots(grid, ways, { center: around, mainland: !near && !opts.islands, spacing: near ? 300 : 1500, ...(near ? { limit: 16 } : {}) })
+            : findSpots(grid, opts.mode, { center: around, limit: 80, spacing: near ? 300 : 1800, mainland: !near && !opts.islands });
         const found = candidates
             .filter(s => C.markNear(app.state.marks, s.lat, s.lon)?.verdict !== 'ulasilmaz');
         if (!found.length) throw new Error('Bu yarıçapta uygun kıyı bulunamadı. Yarıçapı büyütün veya kıyıya yakın bir yer seçin.');
@@ -147,30 +150,36 @@ async function run() {
     }
 }
 
-function card(s, n) {
+function card(s, n, open) {
     const go = s.stand || s;
+    const name = s.place || 'Mera';
+    const key = `${s.lat},${s.lon}`;
     const [safeText, safeClass] = result.mode === 'tekne'
         ? (s.window ? ['Tahmine göre bot sınırları içinde', 'warn'] : ['Bot için uygun saat yok', 'bad'])
         : SAFETY[s.safe];
-    return `<section class="card"><div class="row between"><h2>${n + 1}. ${esc(s.place || 'Kıyı noktası')}</h2><span class="pill ${s.total >= 65 ? 'ok' : s.total >= 45 ? 'warn' : 'mute'}">${s.total}</span></div>
-        <p class="mute">${esc(result.area.name)} merkezine ${distanceKm(result.area.lat, result.area.lon, s.lat, s.lon).toFixed(1)} km</p>
-        <p class="mono">Balık noktası <b>${s.lat}, ${s.lon}</b>${s.stand ? `<br>Durma noktası (kıyı) ${s.stand.lat}, ${s.stand.lon} · atış ~${s.stand.cast} m` : ''}</p>
-        ${s.dataAt > 150 ? `<p class="warn">Kıyıya yakın bant ölçülmemiş: derinlik ve yapı bilgisi kıyıdan ~${s.dataAt} m açıktan alındı; atış mesafesindeki dibi bilmiyoruz.</p>` : ''}
+    return `<section class="card">
+        <p class="${safeClass}">${esc(safeText)}${s.reasons.length ? ` — ${esc(s.reasons.join(' '))}` : ''}</p>
         ${s.quiet ? '<p class="ok"><b>Bakir adayı:</b> yakında kayıtlı yerleşim, iskele veya olta yeri yok. Ulaşımı kontrol edin.</p>' : ''}
         ${s.near?.length ? `<p class="bad">Yakında ${esc(s.near.join(', '))} kaydı var: av yasak veya erişime kapalı olabilir.</p>` : ''}
-        <table class="moon"><tr><th>Kıyıdan açığa</th>${s.profile.map(p => `<th>${p.m} m</th>`).join('')}</tr><tr><td>Derinlik</td>${s.profile.map(p => `<td><b>${p.depth === null ? '--' : `${p.depth} m`}</b></td>`).join('')}</tr></table>
-        <p>Noktada <b>${s.f.depth.toFixed(0)} m</b> · dip: <b>${s.bottom ? esc(s.bottom.name) : 'veri yok'}</b>${s.bottom ? ` <span class="mute">(${esc(s.bottom.scale)})</span>` : ''}</p>
-        <p class="mute">${esc(describe(s.f, result.mode === 'tekne' ? 'tekne' : 'kiyi').filter(t => !t.includes('kumluk') && !t.includes('taşlık')).join(' · ') || 'belirgin derinlik yapısı yok')}${s.shore ? ` · rüzgar ${s.shore}` : ''}</p>
-        <p class="${safeClass}">${esc(safeText)}${s.reasons.length ? ` — ${esc(s.reasons.join(' '))}` : ''}</p>
-        ${s.fish.map(f => `<div class="species"><b>${esc(f.name)} <span class="mono">${C.hhmm(f.from)}–${C.hhmm(f.to)}</span></b><span class="pill">${f.score}</span><small>${esc(f.bait)} · verimli aylar: ${(PEAK[f.name] || []).map(m => MONTHS[m - 1]).join(', ')}</small></div>`).join('') || '<p>Güvenli saat yok.</p>'}
-        <div class="row wrap"><a class="btn primary" href="${mapsUrl(go.lat, go.lon)}" target="_blank" rel="noopener">Yol tarifi</a>${guide.button(go.lat, go.lon, s.place || 'Mera')}<button class="btn" data-act="map" data-v="${n}">Haritada</button><button class="btn" data-act="copy" data-v="${n}">Koordinatı kopyala</button><button class="btn" data-act="weather" data-v="${n}">Hava</button><button class="btn" data-act="save" data-v="${n}">Kaydet</button><button class="btn" data-act="log" data-v="${n}">Av ekle</button></div>
-        <div class="row wrap"><span class="mute">Gittiniz mi?</span>${[['iyi', '👍 İyi'], ['kotu', '👎 Kötü'], ['ulasilmaz', '⛔ Ulaşılamıyor']].map(([v, t]) => `<button class="chip${s.mark === v ? ' on' : ''}" data-act="mark" data-v="${n}|${v}">${t}</button>`).join('')}</div></section>`;
+        ${s.fish.slice(0, 3).map(f => `<div class="species"><b>${esc(f.name)} <span class="mono">${C.hhmm(f.from)}–${C.hhmm(f.to)}</span></b>${pill(f.score)}<small>${esc(f.bait)}</small></div>`).join('') || '<p>Güvenli saat yok.</p>'}
+        <button type="button" class="btn primary big" data-guide="${go.lat},${go.lon}" data-name="${esc(name)}">Beni oraya götür</button>
+        <div class="row wrap"><button class="btn" data-act="map" data-v="${n}">Haritada</button><button class="btn" data-act="save" data-v="${n}">Kaydet</button>${extras.shareButton(go.lat, go.lon, name)}</div>
+        ${fold(`dip:${key}`, 'Dip ve derinlik', `${s.dataAt > 150 ? `<p class="warn">Kıyıya yakın bant ölçülmemiş: derinlik ve yapı bilgisi kıyıdan ~${s.dataAt} m açıktan alındı; atış mesafesindeki dibi bilmiyoruz.</p>` : ''}
+            <div class="scroll"><table class="moon"><tr><th>Kıyıdan açığa</th>${s.profile.map(p => `<th>${p.m} m</th>`).join('')}</tr><tr><td>Derinlik</td>${s.profile.map(p => `<td><b>${p.depth === null ? '--' : `${p.depth} m`}</b></td>`).join('')}</tr></table></div>
+            <p>Noktada <b>${s.f.depth.toFixed(0)} m</b> · dip: <b>${s.bottom ? esc(s.bottom.name) : 'veri yok'}</b>${s.bottom ? ` <span class="mute">(${esc(s.bottom.scale)})</span>` : ''}</p>
+            <p class="mute">${esc(describe(s.f, result.mode === 'tekne' ? 'tekne' : 'kiyi').filter(t => !t.includes('kumluk') && !t.includes('taşlık')).join(' · ') || 'belirgin derinlik yapısı yok')}${s.shore ? ` · rüzgar ${s.shore}` : ''}</p>
+            ${extras.floorChips(go.lat, go.lon)}`, open, 'sub')}
+        ${fold(`more:${key}`, 'Diğer', `<p class="mute">Puan ${s.total} · ${esc(result.area.name)} merkezine ${distanceKm(result.area.lat, result.area.lon, s.lat, s.lon).toFixed(1)} km</p>
+            <p class="mono">Balık noktası <b>${s.lat}, ${s.lon}</b>${s.stand ? `<br>Durma noktası (kıyı) ${s.stand.lat}, ${s.stand.lon} · atış ~${s.stand.cast} m` : ''}</p>
+            <p class="mute">Verimli aylar: ${s.fish.map(f => `${esc(f.name)} (${(PEAK[f.name] || []).map(m => MONTHS[m - 1]).join(', ')})`).join('; ') || '--'}</p>
+            <div class="row wrap"><a class="btn" href="${mapsUrl(go.lat, go.lon)}" target="_blank" rel="noopener">Yol tarifi</a><button class="btn" data-act="copy" data-v="${n}">Koordinatı kopyala</button><button class="btn" data-act="weather" data-v="${n}">Hava</button><button class="btn" data-act="log" data-v="${n}">Av ekle</button></div>
+            <div class="row wrap"><span class="mute">Gittiniz mi?</span>${[['iyi', '👍 İyi'], ['kotu', '👎 Kötü'], ['ulasilmaz', '⛔ Ulaşılamıyor']].map(([v, t]) => `<button class="chip${s.mark === v ? ' on' : ''}" data-act="mark" data-v="${n}|${v}">${t}</button>`).join('')}</div>`, open, 'sub')}</section>`;
 }
 
 // Tum kiyi tek sayfada okunabilsin: her nokta kapali satir, dokununca ayrinti.
-function row(s, n, open) {
+function row(s, n, open, folds) {
     const best = s.fish[0];
-    return `<details class="card spotrow" data-spot="${n}"${open ? ' open' : ''}><summary><span><b>${n + 1}. ${esc(s.place || `${s.lat}, ${s.lon}`)}</b><small>${s.lat}, ${s.lon} · ${s.f.depth.toFixed(0)} m${s.bottom ? ` · ${esc(s.bottom.name)}` : ''}${best ? ` · ${esc(best.name)} ${C.hhmm(best.from)}` : ''}${s.quiet ? ' · bakir adayı' : ''}</small></span><span class="pill ${s.total >= 65 ? 'ok' : s.total >= 45 ? 'warn' : 'mute'}">${s.total}</span></summary>${card(s, n)}</details>`;
+    return `<details class="card spotrow" data-spot="${n}"${open ? ' open' : ''}><summary><span><b>${n + 1}. ${esc(s.place || `${s.lat}, ${s.lon}`)}</b><small>${best ? `${esc(best.name)} ${C.hhmm(best.from)} · ` : ''}${s.f.depth.toFixed(0)} m${s.bottom ? ` · ${esc(s.bottom.name)}` : ''}${s.quiet ? ' · bakir adayı' : ''}</small></span>${pill(s.total)}</summary>${card(s, n, folds)}</details>`;
 }
 
 function calendar() {
@@ -188,7 +197,7 @@ function localNotes() {
 }
 
 function gallery() {
-    const body = photos === null ? 'Yükleniyor…' : photos.error ? 'Gözlem servisine ulaşılamadı.' : !photos.list.length ? 'Bu yarıçapta fotoğraflı balık veya kafadanbacaklı gözlemi yok.'
+    const body = photos === null ? 'Yükleniyor…' : photos.error ? 'Gözlem servisine ulaşılamadı.' : !photos.list.length ? 'Bu yarıçapta av türlerine ait fotoğraflı gözlem yok.'
         : `<div class="photos">${photos.list.map(p => `<figure><a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.photo)}" alt="${esc(p.name)}" loading="lazy"></a><figcaption><b>${esc(p.name)}</b><br>${esc(p.date)}<br><span class="mono">${p.lat === null ? '' : `${p.lat}, ${p.lon}`}</span><br><small>${esc(p.by)}</small></figcaption></figure>`).join('')}</div>`;
     return `<section class="card"><h2>Paylaşılan gözlem fotoğrafları</h2>${body}<p class="mute">iNaturalist'te herkese açık gözlemler (av kaydı olmayabilir; konumlar bazen bilerek bulanıklaştırılır). Sosyal medya paylaşımları taranmıyor.</p></section>`;
 }
@@ -199,28 +208,29 @@ function draw(root) {
     const km = s => distanceKm(result.area.lat, result.area.lon, s.lat, s.lon);
     if (opts.sort === 'yakin') list.sort((a, b) => km(a[0]) - km(b[0]));
     if (opts.sort === 'sira') list.sort((a, b) => a[0].lon - b[0].lon);
-    // Yeniden cizimde acik satirlar acik kalsin.
+    // Yeniden cizimde acik satirlar ve bolumler acik kalsin.
     const opened = new Set([...root.querySelectorAll('details.spotrow[open]')].map(d => Number(d.dataset.spot)));
+    const folds = openFolds(root);
+    if (typed) folds.add('ayar');
     const busy = status.endsWith('…');
-    const settingsOpen = $('details.settings', root)?.open;
-    root.innerHTML = `
-    <section class="card hero"><h1>Bölge keşfi</h1><p><b>${esc(area?.name || '…')}</b> <span class="mono">${area ? `${area.lat.toFixed(4)}, ${area.lon.toFixed(4)}` : ''}</span></p>
+    root.innerHTML = `${mapTabs('kesif')}
+    <section class="card hero"><p><b>${esc(area?.name || '…')}</b></p>
         <button class="btn primary big" data-act="biga" ${busy ? 'disabled' : ''}>⌖ Biga ve çevresi: tüm kıyı</button>
-        <div class="row wrap">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(opts.day))}${chips('mode', [['kiyi', 'Kıyıdan'], ['tekne', 'Tekneden']], opts.mode)}</div>
-        <details class="settings" ${settingsOpen || typed ? 'open' : ''}><summary>Başka bölge ve ayarlar</summary>
+        ${fold('ayar', 'Başka bölge ve ayarlar', `<div class="row wrap">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(opts.day))}${chips('mode', [['kiyi', 'Kıyıdan'], ['tekne', 'Tekneden']], opts.mode)}</div>
         <form class="row search" data-form="explore"><input name="q" placeholder="Başka bölge ara" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button></form><div class="chips">${places}</div>
-        <p class="mute">Arama yarıçapı</p>${chips('radius', [['15', '15 km'], ['25', '25 km'], ['35', '35 km'], ['45', '45 km']], String(opts.radius))}
+        <p class="mute">Arama yarıçapı</p>${chips('radius', [['5', '5 km'], ['15', '15 km'], ['25', '25 km'], ['35', '35 km'], ['45', '45 km']], String(opts.radius))}
         <label class="check"><input type="checkbox" data-field="islands" ${opts.islands ? 'checked' : ''}> Adaları ve karşı kıyıyı da tara</label>
-        <button class="btn big" data-act="run" ${busy ? 'disabled' : ''}>Seçili bölgede meraları bul</button></details>
+        <button class="btn big" data-act="run" ${busy ? 'disabled' : ''}>Seçili bölgede meraları bul</button>`, folds, 'sub')}
         <p class="${busy ? 'mute' : 'bad'}" role="status">${esc(status)}</p></section>
-    ${result ? `<div class="row wrap between"><b>${esc(result.area.name)}: ${result.spots.length} nokta · ${new Date(result.at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${result.day ? ' · yarın için' : ''}</b><span class="row"><button class="chip${opts.quiet ? ' on' : ''}" data-act="quiet">Yalnız bakir adayları</button><button class="btn" data-act="allmap">Tümü haritada</button><button class="btn" data-act="gpx">GPX</button></span></div>
+    ${result ? `<p><b>${esc(result.area.name)}: ${result.spots.length} nokta</b> <span class="mute">${new Date(result.at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${result.day ? ' · yarın için' : ''}</span></p>
+        ${fold('suz', 'Süz ve dışa aktar', `${chips('sort', [['puan', 'En iyiler önce'], ['sira', 'Kıyı sırası (batıdan doğuya)'], ['yakin', 'Yakına göre']], opts.sort)}
+            <div class="row wrap"><button class="chip${opts.quiet ? ' on' : ''}" data-act="quiet">Yalnız bakir adayları</button><button class="btn" data-act="allmap">Tümü haritada</button><button class="btn" data-act="gpx">GPX</button></div>`, folds)}
         ${Date.now() - result.at > 3 * 3600000 ? '<p class="banner warn">Bu sonuçlar 3 saatten eski. Güncel saat ve güvenlik için yeniden tarayın.</p>' : ''}
-        <div class="row">${chips('sort', [['puan', 'Puana göre'], ['sira', 'Kıyı sırası (batıdan doğuya)'], ['yakin', 'Yakına göre']], opts.sort)}</div>
         ${result.approximate ? '<p class="banner bad">Gerçek kıyı çizgisi alınamadı: noktalar derinlik verisine göre yaklaşık ve kıyıdan yüzlerce metre açıkta kalabilir. Biraz sonra yeniden tarayın.</p>' : ''}
         ${result.checked === 'yapılamadı' ? '<p class="banner warn">Harita servisi dolu: bakir ve yasaklı alan kontrolü yapılamadı. Biraz sonra yeniden tarayın.</p>' : result.checked === 'bekliyor' ? '<p class="mute">Bakir ve yasaklı alan kontrolü sürüyor…</p>' : ''}
-        ${list.map(([s, i]) => row(s, i, opened.has(i))).join('') || '<section class="card">Bu süzgece uyan nokta yok.</section>'}
-        <p class="mute">Puan dip yapısı, habitat, koşullar ve tür uygunluğunun birleşimidir; balığın orada olduğunun ölçümü değildir. Derinlik hücresi ~115 m: tek kaya ve batıklar görünmez, seyir için kullanılmaz.</p>` : ''}
-    <div class="cols"><div>${calendar()}</div><div>${localNotes()}${gallery()}</div></div>`;
+        ${list.map(([s, i]) => row(s, i, opened.has(i), folds)).join('') || '<section class="card">Bu süzgece uyan nokta yok.</section>'}
+        <p class="mute">Değerlendirme dip yapısı, habitat, koşullar ve tür uygunluğunun birleşimidir; balığın orada olduğunun ölçümü değildir. Derinlik hücresi ~115 m: tek kaya ve batıklar görünmez, seyir için kullanılmaz.</p>` : ''}
+    ${fold('bilgi', 'Bilgi: aylar, yöre yazıları, fotoğraflar', `<div class="cols"><div>${calendar()}</div><div>${localNotes()}${gallery()}</div></div>`, folds)}`;
 }
 
 async function loadPhotos() {
@@ -228,6 +238,12 @@ async function loadPhotos() {
     photos = null;
     const next = await observations(at.lat, at.lon, opts.radius).then(list => ({ list }), () => ({ error: true }));
     if (at === area) { photos = next; paint(); }
+}
+
+/** Son taramanin noktalari (harita ekrani icin). */
+export async function latest() {
+    result ||= (await cacheGet('explore:last')) || null;
+    return result?.spots || null;
 }
 
 export async function render(root, params = {}) {
@@ -240,6 +256,11 @@ export async function render(root, params = {}) {
         if (!result && last && distanceKm(last.area.lat, last.area.lon, area.lat, area.lon) < 5) result = last;
         loadPhotos();
     }
+    if (params.run) {
+        Object.assign(opts, { radius: params.radius, sort: 'puan' });
+        status = '';
+        run();
+    }
     draw(root);
 }
 
@@ -248,7 +269,7 @@ export const actions = {
     run: () => run(),
     biga: async () => {
         area = { ...BIGA_COAST };
-        Object.assign(opts, { radius: 35, mode: 'kiyi', islands: false, sort: 'sira' });
+        Object.assign(opts, { radius: 35, mode: 'kiyi', islands: false, sort: 'puan' });
         places = ''; result = null; token++;
         await cacheSet('area', area);
         loadPhotos();

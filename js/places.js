@@ -69,9 +69,9 @@ export async function humanPoints(lat, lon, km) {
 export async function observations(lat, lon, km) {
     // 47178: isinsal yuzgecli baliklar, 47459: kafadanbacaklilar
     const r = await getJson(`https://api.inaturalist.org/v1/observations?lat=${lat.toFixed(3)}&lng=${lon.toFixed(3)}&radius=${km}&taxon_id=47178,47459&photos=true&per_page=24&order_by=observed_on&locale=tr`);
-    return r.results.filter(x => x.photos?.[0]?.url && x.taxon).map(x => {
+    return r.results.filter(x => x.photos?.[0]?.url && x.taxon && Object.values(LATIN).some(l => x.taxon.name === l || x.taxon.name.split(' ')[0] === l.split(' ')[0])).map(x => {
         const [a, o] = (x.location || '').split(',').map(Number);
-        return { name: x.taxon.preferred_common_name || x.taxon.name, date: x.observed_on || '', lat: Number.isFinite(a) ? Number(a.toFixed(4)) : null, lon: Number.isFinite(o) ? Number(o.toFixed(4)) : null, photo: x.photos[0].url.replace('square', 'small'), by: x.photos[0].attribution || '', url: `https://www.inaturalist.org/observations/${x.id}` };
+        return { name: x.taxon.preferred_common_name || x.taxon.name, latin: x.taxon.name, date: x.observed_on || '', lat: Number.isFinite(a) ? Number(a.toFixed(4)) : null, lon: Number.isFinite(o) ? Number(o.toFixed(4)) : null, photo: x.photos[0].url.replace('square', 'small'), by: x.photos[0].attribution || '', url: `https://www.inaturalist.org/observations/${x.id}` };
     });
 }
 

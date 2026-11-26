@@ -1,5 +1,5 @@
 import { app, $, toast } from './ui.js';
-import { loadState, cacheGet, cacheSet } from './store.js';
+import { loadState, cacheGet } from './store.js';
 import * as plan from './views/plan.js';
 import * as map from './views/map.js';
 import * as log from './views/log.js';
@@ -13,10 +13,16 @@ import * as session from './session.js';
 import * as more from './views/more.js';
 import * as guide from './guide.js';
 import * as install from './install.js';
+import * as extras from './extras.js';
+import * as welcome from './welcome.js';
+import * as news from './news.js';
 
 const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings, daha: more };
-// Telefonda "Daha" altinda duran ekranlar
-const IN_MORE = ['plan', 'noktalar', 'planlar', 'takim', 'turler', 'ayarlar'];
+// Telefonda menu altinda duran ekranlar
+const IN_MORE = ['plan', 'planlar', 'takim', 'turler', 'ayarlar'];
+// Alt cubukta Meralar secili gorunen ekranlar
+const IN_SPOTS = ['kesif', 'harita', 'noktalar'];
+const PHONE = matchMedia('(max-width:899px),(max-height:500px)');
 let current = 'bugun';
 const root = () => $(`#view-${current}`);
 
@@ -33,8 +39,9 @@ app.go = (name, params = {}, fromHistory = false) => {
     current = next;
     if (current === 'plan' && params.draft) plan.openPlan(params.draft);
     document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== `view-${current}`; });
-    document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', b.dataset.nav === current || (b.dataset.nav === 'daha' && IN_MORE.includes(current)) ? 'page' : 'false'));
+    document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', b.dataset.nav === current || (b.dataset.nav === 'daha' && IN_MORE.includes(current)) || (b.matches('nav [data-nav="kesif"]') && IN_SPOTS.includes(current) && PHONE.matches) ? 'page' : 'false'));
     $('#back').hidden = depth === 0;
+    $('#menu').hidden = current === 'bugun' || current === 'daha';
     VIEWS[current].render(root(), params);
     window.scrollTo(0, fromHistory ? positions[depth] || 0 : 0);
 };
@@ -55,8 +62,14 @@ document.addEventListener('click', e => {
     }
     const setup = e.target.closest('[data-install]');
     if (setup) return install.choose(setup.dataset.install, setup.closest('.install'));
+    const send = e.target.closest('[data-share]');
+    if (send) return extras.share(...send.dataset.share.split(',').map(Number), send.dataset.name);
+    const floor = e.target.closest('[data-floor]');
+    if (floor) return extras.toggleFloor(floor);
+    if (e.target.closest('[data-backup]')) return extras.backup(e.target.closest('[data-backup]')).then(() => app.go(current));
     const nav = e.target.closest('[data-nav]');
-    if (nav) return app.go(nav.dataset.nav);
+    // Meralar sekmesi harita ile acilir.
+    if (nav) return app.go(nav.dataset.nav === 'kesif' && nav.closest('body > nav') && PHONE.matches ? 'harita' : nav.dataset.nav);
     const el = e.target.closest('[data-act]');
     if (el) VIEWS[current].actions?.[el.dataset.act]?.(el.dataset.v, root());
 });
@@ -88,25 +101,29 @@ window.addEventListener('online', net);
 window.addEventListener('offline', net);
 
 try {
+    // Daha once kullanilmis cihazda kayit zaten vardir (loadState ilk acilista olusturur).
+    const returning = Boolean(await cacheGet('state'));
     app.state = await loadState();
+    app.pref = welcome.preferences();
     app.draft = plan.defaultDraft();
+    app.draft.technique = app.pref.technique || app.draft.technique;
     await session.init();
     net();
     app.go('bugun');
     // Ana ekran simgesine basili tutunca acilan kisayollar
     const start = new URLSearchParams(location.search).get('git');
     if (start) app.go(start);
+    // Arkadastan gelen nokta baglantisi
+    const received = await extras.receiveFromAddress();
+    // Yeni kullanici tanisma sorularini, eski kullanici guncelleme notunu bir kez gorur.
+    if (!returning) { news.markSeen(); if (!received) await welcome.firstRun(); }
+    else if (news.unseen()) news.open();
+    window.addEventListener('hashchange', () => extras.receiveFromAddress());
     session.backfill().catch(() => {});
     window.addEventListener('online', () => session.backfill().catch(() => {}));
     today.autoRefresh();
     navigator.storage?.persist?.().catch(() => {});
     setTimeout(check, 5000);
-    // Kayitlar yalnizca bu cihazda: iki haftada bir yedek hatirlatilir.
-    cacheGet('backup:at').then(at => {
-        if (app.state.catches.length < 3) return;
-        if (!at) cacheSet('backup:at', Date.now() - 13 * 86400000);
-        else if (Date.now() - at > 14 * 86400000) toast('Av günlüğünüzü yedekleyin: Ayarlar → Yedek indir.', 'warn');
-    });
     setInterval(check, 3 * 3600000);
 } catch (err) {
     console.error(err);

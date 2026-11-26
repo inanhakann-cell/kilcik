@@ -17,20 +17,20 @@
     <link rel="stylesheet" href="app.css">
 </head>
 <body>
-    <header><img src="icons/icon-192.png" alt="" width="32" height="32"><b>KILÇIK</b><span>Kıyı avı planlayıcı</span><button class="btn" data-nav="planlar">Planlar</button><button class="btn" data-nav="takim">Takım</button><button class="btn" data-nav="turler">Türler</button><button class="btn" data-nav="ayarlar">Ayarlar</button><a class="btn" href="kilavuz.html">Kılavuz</a></header>
+    <header><img src="icons/icon-192.png" alt="" width="32" height="32"><b>KILÇIK</b><span>Kıyı avı planlayıcı</span><button class="btn" data-nav="planlar">Planlar</button><button class="btn" data-nav="takim">Takım</button><button class="btn" data-nav="turler">Türler</button><button class="btn" data-nav="ayarlar">Ayarlar</button><button class="btn" data-nav="daha">Menü</button><a class="btn" href="kilavuz.html">Kılavuz</a></header>
     <p id="offline" class="banner warn" hidden>İnternet yok. Kayıtlarınız açık; hava verisi güncellenemez.</p>
     <nav aria-label="Bölümler">
         <button data-nav="bugun"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M6 6 4.6 4.6M19.4 19.4 18 18M6 18l-1.4 1.4M19.4 4.6 18 6M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>Bugün</button>
         <button data-nav="kesif"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.4-6-11a6 6 0 0 1 12 0c0 5.6-6 11-6 11Zm0-13a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg>Meralar</button>
         <button data-nav="hava"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7a2.5 2.5 0 1 1-2.5 2.5"/></svg>Hava</button>
         <button data-nav="plan" class="wide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm3.5 5.5-2 5-5 2 2-5Z"/></svg>Planla</button>
-        <button data-nav="harita"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Zm0 0v14M15 6v14"/></svg>Harita</button>
+        <button data-nav="harita" class="wide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Zm0 0v14M15 6v14"/></svg>Harita</button>
         <button data-nav="noktalar" class="wide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>Noktalar</button>
         <button data-nav="gunluk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19Zm10-13 3 3M4 22h16"/></svg>Günlük</button>
-        <button data-nav="daha" class="phone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Daha</button>
+        <button data-nav="daha" class="phone wide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Daha</button>
     </nav>
     <main>
-        <button id="back" type="button" class="btn" hidden>← Geri</button>
+        <div id="bar"><button id="back" type="button" class="btn" hidden>← Geri</button><button id="menu" type="button" class="btn" data-nav="daha" hidden>☰ Menü</button></div>
         <div class="view" id="view-hava" hidden></div>
         <div class="view" id="view-kesif" hidden></div>
         <div class="view" id="view-bugun"></div>

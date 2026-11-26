@@ -8,7 +8,8 @@ import { ask } from '../ai.js';
 import { shareCard } from '../share.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
 import { seenNearby } from '../places.js';
-import { app, $, esc, uid, show, wind, options, chips, toast, download, copy, locate, persist, mapsUrl, SAFETY } from '../ui.js';
+import * as extras from '../extras.js';
+import { app, $, esc, uid, show, wind, options, chips, toast, download, copy, locate, persist, mapsUrl, grade, pill, opened, fold, SAFETY } from '../ui.js';
 
 let result = null;
 let chart = null;
@@ -33,18 +34,17 @@ export function render(root) {
     if (d.date < todayIso()) d.date = todayIso();
     const targets = SPECIES.filter(s => s.ortam === d.water);
     const setups = app.state.tackle.filter(t => t.kind === 'Takım');
+    const open = opened(root);
     root.innerHTML = `
-    <section class="card hero"><h1>Kıyıda ne zaman, nerede?</h1><p>Noktayı ve zamanı seçin; planı canlı hava ve deniz verisiyle kuralım.</p></section>
-    <section class="card"><h2>1. Su</h2>${chips('water', [['tuzlu', 'Deniz kıyısı'], ['tatli', 'Tatlı su']], d.water)}</section>
-    <section class="card"><h2>2. Teknik</h2>${chips('technique', TECHNIQUES.map(t => [t.id, t.ad]), d.technique)}
-        ${setups.length ? `<label>Kayıtlı takım<select data-field="setup">${options([['', '—'], ...setups.map(s => [s.id, s.name])], d.setup)}</select></label>` : ''}</section>
-    <section class="card"><h2>3. Nokta</h2>
+    <section class="card"><h2>Nerede?</h2>
         <p class="pick">${d.lat === null ? 'Henüz nokta seçilmedi.' : `<strong>${esc(d.name || 'Seçilen nokta')}</strong><br><span class="mono">${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}</span>`}</p>
         <div class="row"><button class="btn" data-act="here">Konumum</button><button class="btn" data-act="pickmap">Haritadan seç</button></div>
         ${app.state.spots.length ? `<label>Kayıtlı noktalarım<select data-field="spot">${options([['', 'Seçin…'], ...app.state.spots.map(s => [s.id, s.name])], '')}</select></label>` : ''}</section>
-    <section class="card"><h2>4. Zaman ve hedef</h2>
+    <section class="card"><h2>Ne zaman?</h2>
         <div class="grid2"><label>Gün<select data-field="date">${options(Array.from({ length: 14 }, (_, i) => [todayIso(i), i === 0 ? `Bugün, ${dayLabel(i)}` : i === 1 ? `Yarın, ${dayLabel(i)}` : dayLabel(i)]), d.date)}</select></label>
-        <label>Hedef tür (isteğe bağlı)<select data-field="species">${options([['', 'Fark etmez'], ...targets.map(s => [s.ad, s.ad])], d.species)}</select></label></div></section>
+        <label>Hedef tür<select data-field="species">${options([['', 'Fark etmez'], ...targets.map(s => [s.ad, s.ad])], d.species)}</select></label></div></section>
+    ${fold('takim', `Su ve teknik: ${d.water === 'tatli' ? 'tatlı su' : 'deniz kıyısı'}, ${esc(TECHNIQUES.find(t => t.id === d.technique)?.ad || '')}`, `${chips('water', [['tuzlu', 'Deniz kıyısı'], ['tatli', 'Tatlı su']], d.water)}<p class="mute">Teknik</p>${chips('technique', TECHNIQUES.map(t => [t.id, t.ad]), d.technique)}
+        ${setups.length ? `<label>Kayıtlı takım<select data-field="setup">${options([['', '—'], ...setups.map(s => [s.id, s.name])], d.setup)}</select></label>` : ''}`, open)}
     <button class="btn primary big" data-act="analyse" ${d.lat === null ? 'disabled' : ''}>Planı oluştur</button>`;
 }
 
@@ -75,7 +75,7 @@ async function analyse(root) {
     setDay(d.date);
     renderResult(root);
     api.modelSpread(d.lat, d.lon).then(m => { if (mine === run && result) { result.models = m; paintConfidence(); } }, () => {});
-    seenNearby(d.lat, d.lon, Number(d.date.slice(5, 7))).then(seen => { if (mine === run && result) { result.seen = seen; const el = $('#activity'); if (el) el.innerHTML = activityHtml(); } }, () => {});
+    seenNearby(d.lat, d.lon, Number(d.date.slice(5, 7))).then(seen => { if (mine === run && result) { result.seen = seen; for (const [sel, count] of [['#activity', 3], ['#activity-all', 8]]) { const el = $(sel); if (el) el.innerHTML = activityHtml(count); } } }, () => {});
     if (salt) api.chlorophyll(d.lat, d.lon).then(v => v, () => null).then(v => { if (mine === run && result) { result.chl = v; const el = $('#metrics'); if (el) el.innerHTML = metrics(); } });
     api.nearbyFish(d.lat, d.lon).then(f => f, () => null).then(f => { if (mine === run && result) { result.fish = f; paintFish(); } });
 }
@@ -87,7 +87,6 @@ function setDay(date) {
     result.sel = result.plan.windows[0]?.peak.row.time || result.plan.hours[0]?.row.time || null;
 }
 
-const ring = score => `<div class="ring" style="--p:${score ?? 0}"><b>${score ?? '--'}</b></div>`;
 const span = w => `${C.hhmm(w.from)}–${C.hhmm(w.to)}`;
 
 function paintFish() {
@@ -114,7 +113,7 @@ function metrics() {
     const sol = periods.map(p => `${p.type === 'ana' ? 'Ana' : 'Ara'} ${clock(p.at - p.half)}–${clock(p.at + p.half)}`).join(', ') || '--';
     const all = [
         ['Rüzgar', wind(r.wind), 'Saatlik ortalama, 10 m yükseklikte.'],
-        ['Hamle', wind(r.gust), 'Ani rüzgar tepe değeri. 45 km/s üstü atışı zorlaştırır.'],
+        ['Hamle', wind(r.gust), 'Ani rüzgar tepe değeri. 45 km/sa üstü atışı zorlaştırır.'],
         ['Rüzgar yönü', `${C.windName(r.dir)} (${show(r.dir, '°')})`, 'Rüzgarın geldiği yön.'],
         ['Kıyıya göre rüzgar', C.windToShore(r.dir, ctx.bearing) || '--', ctx.bearing === null ? 'Kıyı yönü bu noktada belirlenemedi.' : `Deniz yaklaşık ${C.dirCode(ctx.bearing)} yönünde (yükseklik modelinden tahmin).`],
         ...(ctx.salt ? [
@@ -157,39 +156,35 @@ function renderResult(root) {
     const dayName = date => new Date(`${date}T12:00`).toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric' });
     const setup = app.state.tackle.find(t => t.id === d.setup);
 
+    const open = opened(root);
     root.innerHTML = `
-    <div class="row between"><button class="btn" data-act="back">← Yeni plan</button><span class="mute">${esc(pack.source)} veri, ${new Date(pack.updatedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>
+    <div class="row between top"><button class="btn" data-act="back">← Yeni plan</button><span class="mute">${esc(pack.source)} veri, ${new Date(pack.updatedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></div>
     ${status.ok ? '' : `<p class="banner bad">${esc(status.message)} Güvenlik değerlendirmesi gösterilmiyor.</p>`}
     ${ctx.salt && shore && shore.elevation > 15 ? `<p class="banner warn">Seçilen nokta yaklaşık ${Math.round(shore.elevation)} m yükseklikte görünüyor; kıyıda olduğundan emin olun.</p>` : ''}
-    <div class="cols">
-    <div>
-    <section class="card score">${ring(plan.score)}<div><h1>${esc(C.scoreLabel(plan.score))}</h1>
-        <p>${esc(d.name || `${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}`)} · ${esc(new Date(`${d.date}T12:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
-        <p class="mute">${esc(technique.ad)}${setup ? ` · ${esc(setup.name)}` : ''} · <span id="confidence">tahmin güveni ${plan.confidence}</span></p></div></section>
-    <section class="card"><h2>14 günlük görünüm</h2><div class="week">${week.map(({ date, p }) => `<button data-act="day" data-v="${date}" class="${date === d.date ? 'on' : ''}"><small>${esc(dayName(date))}</small><b class="${p.allUnsafe ? 'bad' : ''}">${p.allUnsafe ? '!' : p.score ?? '--'}</b></button>`).join('')}</div><p class="mute">! güvenli saat yok. İleri günlerin tahmin güveni düşer.</p></section>
-    <section class="card"><h2>En iyi atış pencereleri</h2>
-        ${plan.windows.map((w, n) => `<button class="window" data-act="hour" data-v="${w.peak.row.time}"><b>${n + 1}. ${span(w)}</b><span class="pill">${w.score}</span><small>${esc([...w.peak.factors].sort((a, b) => b.points / b.max - a.points / a.max).slice(0, 2).map(f => f.text).join(' · '))}</small></button>`).join('') || '<p>Bu gün için uygun pencere yok.</p>'}
-        <div class="row"><button class="btn" data-act="save">Planı kaydet</button><button class="btn" data-act="remind" ${plan.windows.length ? '' : 'disabled'}>Takvime hatırlatma</button></div></section>
-    <section class="card"><h2>Usta yorumu</h2>${result.text.map(t => `<p>${esc(t)}</p>`).join('')}
-        <p class="mute">Kural tabanlı otomatik yorumdur, yapay zekâ modeli değildir.</p>
-        <div class="row wrap"><button class="btn" data-act="share">Metin paylaş</button><button class="btn" data-act="card">Görsel kart</button><button class="btn" data-act="ai">Soruyu kopyala</button></div></section>
-    <section class="card"><h2>Yapay zekâ mentor</h2><form data-form="mentor"><label>Sorunuz (isteğe bağlı)<input name="q" maxlength="300" placeholder="Hangi sahte, hangi derinlik?"></label><button class="btn primary">Mentora sor</button></form>
-        <p id="answer" class="answer">${esc(result.answer)}</p><p class="mute">Kendi ücretsiz Gemini anahtarınızla çalışır (Ayarlar). Plan verisi ve noktanın koordinatı Google'a gönderilir. Yanıt hatalı olabilir.</p></section>
-    <section class="card"><h2>Saatlik puan</h2><div class="chart"><canvas id="hours"></canvas></div></section>
-    <section class="card"><div class="row between"><h2>3 günlük eğilim</h2><select data-field="trend" aria-label="Eğilim">${options([['sicaklik', 'Sıcaklık ve bulut'], ['basinc', 'Basınç'], ['yagis', 'Yağış'], ['ruzgar', 'Rüzgar ve hamle'], ...(ctx.salt ? [['deniz', 'Su seviyesi ve dalga']] : [])], trend)}</select></div><div class="chart"><canvas id="trend"></canvas></div></section>
-    <section class="card"><details><summary><b>Hazırlık listesi</b></summary>${[...CHECK.ortak, ...(CHECK[d.technique] || [])].map(t => `<label class="check"><input type="checkbox"> ${esc(t)}</label>`).join('')}</details></section>
-    </div>
-    <div>
-    <section class="card"><div class="row between"><h2>Ayrıntılı veriler</h2><select data-field="hour" aria-label="Saat">${options(plan.hours.map(h => [h.row.time, `${C.hhmm(h.row.time)} · ${h.score ?? '--'}`]), result.sel)}</select></div>
-        <p class="banner ${safeClass}"><b>${esc(safeText)}</b> ${esc(status.ok ? sel?.safety.reasons.join(' ') || '' : '')}</p>
+    <section class="card hero"><p class="mute">${esc(d.name || `${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}`)} · ${esc(new Date(`${d.date}T12:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
+        <h1 class="${grade(plan.score)[1]}">${esc(C.scoreLabel(plan.score))}</h1>
+        ${plan.windows[0] ? `<p class="when">${span(plan.windows[0])}</p>` : '<p class="bad">Bu gün için uygun pencere yok.</p>'}
+        <p class="${safeClass}"><b>${esc(safeText)}</b> ${esc(status.ok ? sel?.safety.reasons.join(' ') || '' : '')}</p>
+        <button type="button" class="btn primary big" data-guide="${d.lat},${d.lon}" data-name="${esc(d.name || 'Plan noktası')}">Beni oraya götür</button>
+        <div class="row wrap"><button class="btn" data-act="save">Planı kaydet</button><button class="btn" data-act="remind" ${plan.windows.length ? '' : 'disabled'}>Takvime hatırlatma</button>${extras.shareButton(d.lat, d.lon, d.name || 'Mera')}</div>
+        <p class="mute">Puan ${plan.score ?? '--'}/100 · ${esc(technique.ad)}${setup ? ` · ${esc(setup.name)}` : ''} · <span id="confidence">tahmin güveni ${plan.confidence}</span></p></section>
+    <section class="card"><h2>Hangi balık, saat kaçta?</h2><div id="activity">${activityHtml(3)}</div></section>
+    <section class="card"><h2>14 gün</h2><div class="week">${week.map(({ date, p }) => `<button data-act="day" data-v="${date}" class="${date === d.date ? 'on' : ''}"><small>${esc(dayName(date))}</small><b class="${p.allUnsafe ? 'bad' : grade(p.score)[1]}">${p.allUnsafe ? '!' : p.score ?? '--'}</b></button>`).join('')}</div><p class="mute">! güvenli saat yok. İleri günlerin tahmin güveni düşer.</p></section>
+    ${fold('pencere', 'Atış saatleri ve yorum', `${plan.windows.map((w, n) => `<button class="window" data-act="hour" data-v="${w.peak.row.time}"><b>${n + 1}. ${span(w)}</b>${pill(w.score)}<small>${esc([...w.peak.factors].sort((a, b) => b.points / b.max - a.points / a.max).slice(0, 2).map(f => f.text).join(' · '))}</small></button>`).join('') || '<p>Bu gün için uygun pencere yok.</p>'}
+        ${result.text.map(t => `<p>${esc(t)}</p>`).join('')}<p class="mute">Kural tabanlı otomatik yorumdur, yapay zekâ modeli değildir.</p>
+        <div class="row wrap"><button class="btn" data-act="share">Metin paylaş</button><button class="btn" data-act="card">Görsel kart</button></div>`, open)}
+    ${fold('balik', 'Bütün balıklar ve yöre kayıtları', `<div id="activity-all">${activityHtml(8)}</div><h3>Bölgede kayıtlı balıklar (iNaturalist, 40 km)</h3><div id="fish"></div>
+        <p class="mute">Koşul uyumuna dayalı tahmindir, olasılık değildir. Avlanmadan önce <a href="${LEGAL_URL}" target="_blank" rel="noopener">resmi tebliği</a> kontrol edin.</p>`, open)}
+    ${fold('grafik', 'Grafikler', `<h3>Saatlik puan</h3><div class="chart"><canvas id="hours"></canvas></div>
+        <div class="row between"><h3>3 günlük eğilim</h3><select data-field="trend" aria-label="Eğilim">${options([['sicaklik', 'Sıcaklık ve bulut'], ['basinc', 'Basınç'], ['yagis', 'Yağış'], ['ruzgar', 'Rüzgar ve hamle'], ...(ctx.salt ? [['deniz', 'Su seviyesi ve dalga']] : [])], trend)}</select></div><div class="chart"><canvas id="trend"></canvas></div>`, open)}
+    ${fold('veri', 'Ayrıntılı veriler', `<select data-field="hour" aria-label="Saat">${options(plan.hours.map(h => [h.row.time, `${C.hhmm(h.row.time)} · ${h.score ?? '--'}`]), result.sel)}</select>
         <div class="metrics" id="metrics">${metrics()}</div>
-        <p class="mute">Kartlara dokununca açıklaması açılır. Kaynak: Open-Meteo. Resmi meteoroloji uyarılarının yerine geçmez.</p></section>
-    <section class="card"><h2>Puanı ne belirledi?</h2>${(sel?.factors || []).map(f => `<div class="factor"><span>${esc(f.text)}</span><meter min="0" max="${f.max}" value="${f.points}"></meter></div>`).join('') || '<p>--</p>'}</section>
-    <section class="card"><h2>Hangi balık, saat kaçta?</h2><div id="activity">${activityHtml()}</div>
-        <p class="mute">Koşul uyumuna dayalı tahmindir, olasılık değildir. Avlanmadan önce <a href="${LEGAL_URL}" target="_blank" rel="noopener">resmi tebliği</a> kontrol edin.</p></section>
-    <section class="card"><h2>Bölgede kayıtlı balıklar</h2><div id="fish"></div><p class="mute">iNaturalist gözlemleri, 40 km. Av garantisi değildir.</p></section>
-    <a class="btn big" href="${mapsUrl(d.lat, d.lon)}" target="_blank" rel="noopener">Yol tarifi al</a>
-    </div></div>`;
+        <p class="mute">Kartlara dokununca açıklaması açılır. Kaynak: Open-Meteo. Resmi meteoroloji uyarılarının yerine geçmez.</p>
+        <h3>Puanı ne belirledi?</h3>${(sel?.factors || []).map(f => `<div class="factor"><span>${esc(f.text)}</span><meter min="0" max="${f.max}" value="${f.points}"></meter></div>`).join('') || '<p>--</p>'}`, open)}
+    ${fold('liste', 'Hazırlık listesi', [...CHECK.ortak, ...(CHECK[d.technique] || [])].map(t => `<label class="check"><input type="checkbox"> ${esc(t)}</label>`).join(''), open)}
+    ${fold('zeka', 'Yapay zekâya sor (isteğe bağlı)', `<form data-form="mentor"><label>Sorunuz (isteğe bağlı)<input name="q" maxlength="300" placeholder="Hangi sahte, hangi derinlik?"></label><button class="btn primary">Mentora sor</button></form>
+        <p id="answer" class="answer">${esc(result.answer)}</p><p class="mute">Kendi ücretsiz Gemini anahtarınızla çalışır (Ayarlar). Plan verisi ve noktanın koordinatı Google'a gönderilir. Yanıt hatalı olabilir.</p><button class="btn" data-act="ai">Soruyu kopyala</button>`, open)}
+    <a class="btn big" href="${mapsUrl(d.lat, d.lon)}" target="_blank" rel="noopener">Yol tarifi al</a>`;
     paintFish();
     paintConfidence();
     drawChart();
@@ -199,13 +194,16 @@ function renderResult(root) {
 function paintConfidence() {
     const el = $('#confidence');
     const c = result.models && C.modelConfidence(result.models, result.d.date);
-    if (el && c) el.textContent = `tahmin güveni ${c.level} (modeller arası ±${c.spread} km/s)`;
+    if (el && c) el.textContent = `tahmin güveni ${c.level} (modeller arası ±${c.spread} km/sa)`;
 }
 
-function activityHtml() {
+function activityHtml(count) {
     const { d, pack, plan, ctx } = result;
     const evidence = { seen: ctx.salt ? result.seen : {}, own: ownEvidence(app.state.catches, d.lat, d.lon, Number(d.date.slice(5, 7))) };
-    return speciesActivity(pack, plan.hours, { salt: ctx.salt, evidence }).slice(0, 8).map(f => `<div class="species"><b>${esc(f.name)} <span class="mono">${span(f)}</span></b><span class="pill ${f.closed ? 'bad' : f.level === 'yüksek' ? 'ok' : f.level === 'orta' ? 'warn' : 'mute'}">${f.closed ? 'yasak' : `${f.score} · ${f.level}`}</span>
+    const all = speciesActivity(pack, plan.hours, { salt: ctx.salt, evidence });
+    // Hedef tur en uste alinir.
+    all.sort((a, b) => Number(b.name === d.species) - Number(a.name === d.species));
+    return all.slice(0, count).map(f => `<div class="species"><b>${esc(f.name)} <span class="mono">${span(f)}</span></b><span class="pill ${f.closed ? 'bad' : f.level === 'yüksek' ? 'ok' : f.level === 'orta' ? 'warn' : 'mute'}">${f.closed ? 'yasak' : `${grade(f.score)[0]}`}</span>
         <small>${esc(f.why.join(' · '))}</small><small>Yem: ${esc(f.bait)}${ruleFor(f.name) ? ` · ${esc(ruleText(ruleFor(f.name)))}` : ''}</small></div>`).join('') || '<p>Güvenli saat veya mevsiminde tür yok.</p>';
 }
 
@@ -215,7 +213,7 @@ function drawTrend() {
     if (!canvas) return;
     const start = result.pack.rows.findIndex(r => r.time.startsWith(result.d.date));
     const rows = result.pack.rows.slice(start, start + 72);
-    const defs = { sicaklik: [['Hava °C', 'air', '#fbbf24'], ['Su °C', 'sea', '#14b8a6'], ['Bulut %', 'cloud', '#64748b', 'y2']], basinc: [['Basınç hPa', 'pressure', '#fbbf24']], yagis: [['Yağış mm', 'precip', '#60a5fa']], ruzgar: [['Rüzgar km/s', 'wind', '#60a5fa'], ['Hamle km/s', 'gust', '#a78bfa']], deniz: [['Su seviyesi m', 'level', '#14b8a6'], ['Dalga m', 'wave', '#c084fc', 'y2']] }[trend] || [];
+    const defs = { sicaklik: [['Hava °C', 'air', '#fbbf24'], ['Su °C', 'sea', '#14b8a6'], ['Bulut %', 'cloud', '#64748b', 'y2']], basinc: [['Basınç hPa', 'pressure', '#fbbf24']], yagis: [['Yağış mm', 'precip', '#60a5fa']], ruzgar: [['Rüzgar km/sa', 'wind', '#60a5fa'], ['Hamle km/sa', 'gust', '#a78bfa']], deniz: [['Su seviyesi m', 'level', '#14b8a6'], ['Dalga m', 'wave', '#c084fc', 'y2']] }[trend] || [];
     weather = new window.Chart(canvas, {
         type: 'line',
         data: { labels: rows.map(r => `${r.time.slice(8, 10)}.${r.time.slice(5, 7)} ${r.time.slice(11, 16)}`), datasets: defs.map(([label, key, color, axis = 'y']) => ({ label, data: rows.map(r => (key === 'wind' || key === 'gust') && r[key] !== null ? Math.round(r[key] * 1.852) : r[key]), borderColor: color, backgroundColor: color, pointRadius: 0, tension: 0.3, yAxisID: axis })) },
@@ -249,7 +247,7 @@ function drawChart() {
             labels: hs.map(h => C.hhmm(h.row.time)),
             datasets: [
                 { type: 'bar', label: 'Puan', data: hs.map(h => h.score), backgroundColor: hs.map(h => ({ go: '#14b8a6', caution: '#f59e0b', nogo: '#ef4444', unknown: '#64748b' })[h.safety.level]), yAxisID: 'y' },
-                line('Rüzgar (km/s)', hs.map(h => (h.row.wind === null ? null : Math.round(h.row.wind * 1.852))), '#60a5fa', 'w'),
+                line('Rüzgar (km/sa)', hs.map(h => (h.row.wind === null ? null : Math.round(h.row.wind * 1.852))), '#60a5fa', 'w'),
                 ...(result.ctx.salt ? [line('Dalga (m)', hs.map(h => h.row.wave), '#c084fc', 'm')] : [])
             ]
         },

@@ -1,15 +1,25 @@
 // Ortak arayuz yardimcilari ve uygulama durumu.
-export const app = { state: null, draft: null, go: () => {} };
+export const app = { state: null, draft: null, pref: {}, go: () => {} };
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const uid = p => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 export const show = (v, unit = '') => (v === null || v === undefined ? '--' : `${v}${unit}`);
-export const wind = kt => (kt === null || kt === undefined ? '--' : `${Math.round(kt * 1.852)} km/s (${Math.round(kt)} kt)`);
+export const wind = kt => (kt === null || kt === undefined ? '--' : `${Math.round(kt * 1.852)} km/sa (${Math.round(kt)} kt)`);
 export const options = (items, selected) => items.map(([v, label]) => `<option value="${esc(v)}"${String(v) === String(selected) ? ' selected' : ''}>${esc(label)}</option>`).join('');
 export const chips = (act, items, selected) => `<div class="chips">${items.map(([v, label]) => `<button type="button" class="chip${v === selected ? ' on' : ''}" data-act="${act}" data-v="${esc(v)}" aria-pressed="${v === selected}">${esc(label)}</button>`).join('')}</div>`;
 export const mapsUrl = (lat, lon) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 export const SAFETY = { go: ['Güvenlik: sorun görünmüyor', 'ok'], caution: ['Güvenlik: dikkat', 'warn'], nogo: ['Güvenlik: gitme', 'bad'], unknown: ['Güvenlik: bilinmiyor', 'mute'] };
+
+/** Puanin soz karsiligi ve rengi. */
+export const grade = s => (s === null || s === undefined || s < 0 ? ['--', 'mute'] : s >= 80 ? ['çok iyi', 'ok'] : s >= 65 ? ['iyi', 'ok'] : s >= 45 ? ['orta', 'warn'] : ['zayıf', 'mute']);
+export const pill = s => { const [word, cls] = grade(s); return `<span class="pill ${cls}">${word}</span>`; };
+/** Katlanir bolum; yeniden cizimde acik kalmasi icin opened() ile birlikte kullanilir. */
+export const opened = root => new Set([...root.querySelectorAll('details[data-keep][open]')].map(d => d.dataset.keep));
+export const fold = (key, title, body, open, cls = 'card fold') => `<details class="${cls}" data-keep="${esc(key)}"${open?.has(key) ? ' open' : ''}><summary>${title}</summary>${body}</details>`;
+/** Meralar ekraninin ust secicisi. */
+export const mapTabs = on => `<div class="seg">${[['harita', 'Harita'], ['kesif', 'Liste'], ['noktalar', 'Noktalarım']].map(([v, t]) => `<button type="button" class="chip${v === on ? ' on' : ''}" data-nav="${v}">${t}</button>`).join('')}</div>`;
+export const WARNINGS_URL = 'https://www.mgm.gov.tr/meteouyari/turkiye.aspx';
 
 export function toast(text, kind = '') {
     const el = document.createElement('div');
