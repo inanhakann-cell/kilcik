@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06131a">
+<meta name="format-detection" content="telephone=no">
+<title>KILÇIK Kullanım Kılavuzu</title>
+<style>
+:root{--bg:#06131a;--card:#0d2029;--line:#1d3a46;--text:#e6f1f4;--mute:#9db5bf;--accent:#14b8a6;--head:#2dd4bf}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-wrap:break-word}
+main{max-width:820px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
+a{color:var(--head)}
+h1{font-size:1.7rem;line-height:1.25;margin:16px 0 4px}h2{font-size:1.3rem;color:var(--head);border-bottom:2px solid var(--line);padding-bottom:6px;margin:36px 0 10px}h3{font-size:1.05rem;margin:18px 0 4px}
+p{margin:8px 0}ul,ol{padding-left:22px;margin:8px 0}li{margin:4px 0}
+.back{display:inline-flex;align-items:center;min-height:44px;padding:6px 16px;border-radius:12px;background:#12303b;border:1px solid var(--line);color:var(--text);text-decoration:none;font-weight:600}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 16px}nav.toc ol{columns:2 220px;column-gap:24px}nav.toc a{display:inline-block;padding:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.92rem}th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}th{background:var(--card)}
+td:first-child{font-weight:600;width:34%}
+.note{border-left:4px solid #fbbf24;background:var(--card);border-radius:0 10px 10px 0;padding:8px 14px;margin:12px 0}
+.tip{border-left:4px solid var(--accent);background:var(--card);border-radius:0 10px 10px 0;padding:8px 14px;margin:12px 0}
+figure{margin:14px auto;text-align:center}figure img{width:100%;max-width:280px;height:auto;border:1px solid var(--line);border-radius:18px}figcaption{color:var(--mute);font-size:.85rem}
+.pair{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}.pair figure{flex:0 1 280px;margin:8px 0}
+.go{color:#2dd4bf;font-weight:700}.care{color:#fbbf24;font-weight:700}.stop{color:#f87171;font-weight:700}
+@page{size:A4;margin:14mm 14mm 16mm}
+@media print{
+:root{--bg:#fff;--card:#f1f6f8;--line:#c9d8de;--text:#12252d;--mute:#4b636d;--head:#0f766e}
+body{font-size:10.5pt;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+main{max-width:none;padding:0}.back{display:none}
+h2{margin-top:20px}h2,h3{break-after:avoid}table tr,figure,.note,.tip,li{break-inside:avoid}
+figure img{max-width:56mm}.pair figure{flex:0 1 56mm}
+.go{color:#0f766e}.care{color:#b45309}.stop{color:#b91c1c}
+}
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="./">← Uygulamaya dön</a>
+<h1>KILÇIK Kullanım Kılavuzu</h1>
+<p>Kıyıdan balık avı için <b>nerede</b>, <b>saat kaçta</b> ve <b>hangi balık</b> sorularına yardım eden planlama uygulaması. Ücretsizdir; üyelik istemez.</p>
+<div class="note"><b>Baştan bilin:</b> Puanlar hava, deniz ve genel balıkçılık bilgisine dayalı <b>tahmindir</b>; balık garantisi veya ölçülmüş olasılık değildir. Güvenlik uyarıları resmi meteoroloji uyarılarının yerine geçmez. Denize ve kayalığa çıkmadan kendi gözlemini yap. Acil durum: <b>112</b>, Sahil Güvenlik: <b>158</b>.</div>
+
+<nav class="toc" aria-label="İçindekiler"><b>İçindekiler</b><ol>
+<li><a href="#kurulum">Kurulum ve güncelleme</a></li>
+<li><a href="#hizli">Hızlı başlangıç</a></li>
+<li><a href="#duzen">Ekran düzeni</a></li>
+<li><a href="#puan">Puan ve güvenlik renkleri</a></li>
+<li><a href="#bugun">Bugün</a></li>
+<li><a href="#seans">Ava başladım</a></li>
+<li><a href="#meralar">Meralar (bölge keşfi)</a></li>
+<li><a href="#gotur">Noktaya götür</a></li>
+<li><a href="#hava">Hava</a></li>
+<li><a href="#harita">Harita</a></li>
+<li><a href="#plan">Av planla</a></li>
+<li><a href="#gunluk">Av günlüğü</a></li>
+<li><a href="#noktalar">Noktalarım</a></li>
+<li><a href="#planlar">Planlar ve takım çantası</a></li>
+<li><a href="#turler">Tür rehberi</a></li>
+<li><a href="#ayarlar">Ayarlar ve yedek</a></li>
+<li><a href="#internetsiz">İnternetsiz kullanım</a></li>
+<li><a href="#gizlilik">Veriler ve gizlilik</a></li>
+<li><a href="#sorun">Sorun giderme</a></li>
+<li><a href="#sozluk">Küçük sözlük</a></li>
+</ol></nav>
+
+<h2 id="kurulum">1. Kurulum ve güncelleme</h2>
+<h3>Telefon</h3>
+<p>Adres: <a href="https://inanhakann-cell.github.io/kilcik/">https://inanhakann-cell.github.io/kilcik/</a></p>
+<table><tr><th>Telefon</th><th>Adımlar</th></tr>
+<tr><td>iPhone</td><td>Adresi <b>Safari</b>’de açın → <b>Paylaş</b> (kare ve yukarı ok) → <b>Ana Ekrana Ekle</b> → <b>Ekle</b>.</td></tr>
+<tr><td>Android</td><td>Adresi <b>Chrome</b>’da açın → sağ üstte <b>⋮</b> → <b>Uygulamayı yükle</b> veya <b>Ana ekrana ekle</b>.</td></tr></table>
+<p>İlk açılışta konum izni sorulur; “Konumum”, “Ava başladım” ve “Noktaya götür” için izin verin.</p>
+<div class="tip">iPhone’da ana ekran simgesinden açılan uygulama, Safari’den ayrı kayıt tutar. Kayıt girmeye başlamadan önce ana ekrana ekleyin.</div>
+<p>Android’de simgeye basılı tutunca <b>Meraları bul</b>, <b>Av günlüğü</b> ve <b>Hava</b> kısayolları çıkar.</p>
+<h3>Arkadaşlarınıza göndermek</h3>
+<p>WhatsApp’tan şu bağlantıyı yollayın: <a href="https://inanhakann-cell.github.io/kilcik/kur.html">https://inanhakann-cell.github.io/kilcik/kur.html</a>. Sayfa telefonu tanır: Android’de çoğunlukla tek düğmeyle yüklenir, iPhone’da üç adımı gösterir. Herkesin kayıtları kendi telefonunda ayrıdır.</p>
+<h3>Bilgisayar</h3>
+<p>Masaüstündeki balık simgeli <b>KILÇIK</b> kısayoluna çift tıklayın.</p>
+<h3>Güncelleme</h3>
+<p>Yeni sürüm kendiliğinden gelir. Eski ekran görünürse uygulamayı tamamen kapatıp yeniden açın (gerekirse iki kez).</p>
+
+<h2 id="hizli">2. Hızlı başlangıç</h2>
+<ol>
+<li><b>Bugün</b> ekranına bakın: önerilen yer, en iyi saat ve olası balıklar en üsttedir.</li>
+<li>Yer arıyorsanız <b>Meralar → Biga ve çevresi: tüm kıyı</b> düğmesine basın.</li>
+<li>Beğendiğiniz noktayı açıp <b>Yol tarifi</b> veya <b>Noktaya götür</b> deyin.</li>
+<li>Merada <b>Ava başladım</b>’a basın; balık tuttukça kaydedin.</li>
+<li>Dönerken <b>Avı bitir</b> deyin. Balık çıkmadıysa da kaydedin: tahmin bundan öğrenir.</li>
+</ol>
+
+<h2 id="duzen">3. Ekran düzeni</h2>
+<table><tr><th>Düğme</th><th>Ne işe yarar</th></tr>
+<tr><td>Bugün</td><td>Günün özeti: nereye, ne zaman, hangi balık.</td></tr>
+<tr><td>Meralar</td><td>Kıyı boyunca atış noktaları bulur.</td></tr>
+<tr><td>Hava</td><td>Rüzgar, dalga, basınç, gelgit, ay ve saatlik tablo.</td></tr>
+<tr><td>Harita</td><td>Yer seçme, kayıtlar, radar ve rüzgar katmanı.</td></tr>
+<tr><td>Günlük</td><td>Avlarınız, istatistikler ve tahmin sınaması.</td></tr>
+<tr><td>Daha (telefon)</td><td>Av planla, Noktalarım, Kayıtlı planlar, Takım çantam, Tür rehberi, Ayarlar ve bu kılavuz.</td></tr></table>
+<p>Bilgisayarda menü soldadır; Planlar, Takım, Türler, Ayarlar ve Kılavuz üst çubuktadır. Önceki ekrana dönmek için <b>← Geri</b> düğmesini (veya telefonun geri hareketini) kullanın. Telefonda sayfayı aşağı kaydırınca düğme gizlenir, hafifçe yukarı kaydırınca geri gelir.</p>
+<figure><img src="kilavuz/daha.jpg" alt="Daha menüsü"><figcaption>Telefonda “Daha” menüsü</figcaption></figure>
+
+<h2 id="puan">4. Puan ve güvenlik renkleri</h2>
+<p><b>Puan (0–100)</b> koşulların balığa ve avcılığa ne kadar uyduğunu gösterir. Etkenler: günün saati, solunar dönem, basınç eğilimi, rüzgar, dalga, denizin son durumu, su hareketi (gelgit), gökyüzü, su sıcaklığı değişimi, ay evresi, hedef tür ve kendi av geçmişiniz.</p>
+<table><tr><th>Güvenlik</th><th>Anlamı</th></tr>
+<tr><td><span class="go">Gidilir</span></td><td>Verilere göre belirgin sorun yok.</td></tr>
+<tr><td><span class="care">Dikkat</span></td><td>Sert hamle (yaklaşık 46 km/s ve üstü), sınıra yakın dalga, uzun periyotlu ölü dalga, denizden esen sert rüzgar, yoğun sis, don, karanlık veya eksik dalga ölçümü.</td></tr>
+<tr><td><span class="stop">Gitme</span></td><td>Gök gürültülü fırtına, rüzgar veya dalga sınırınızın üstünde ya da yaklaşık 63 km/s ve üstü hamle.</td></tr>
+<tr><td>Bilinmiyor</td><td>Rüzgar/dalga verisi eksik veya veri 3 saatten eski. Karar verilmez.</td></tr></table>
+<p>Başlangıç sınırları: rüzgar <b>41 km/saat</b>, dalga <b>1,25 m</b>. <a href="#ayarlar">Ayarlar</a>’dan değiştirebilirsiniz. Saat çubuklarında yeşil “gidilir”, sarı “dikkat”, kırmızı “gitme” demektir; çubuk yükseldikçe puan artar.</p>
+
+<h2 id="bugun">5. Bugün</h2>
+<figure><img src="kilavuz/bugun.jpg" alt="Bugün ekranı"></figure>
+<table><tr><th>Bölüm / düğme</th><th>Ne işe yarar</th></tr>
+<tr><td>⤓ (İndir)</td><td>Yöredeki yerlerin ve kayıtlı noktalarınızın tahminini internetsiz kullanım için kaydeder.</td></tr>
+<tr><td>⟳ (Yenile)</td><td>Veriyi yeniden alır. Uygulama açıkken yaklaşık 30 dakikada bir kendisi de yeniler.</td></tr>
+<tr><td>Bugün / Yarın</td><td>Hangi güne bakılacağını seçer.</td></tr>
+<tr><td>Büyük kart</td><td>En uygun yer: puan, karar, koordinat, uzaklık, rüzgarın kıyıya göre yönü, en iyi saat, saat çubukları ve öne çıkan 3 balık.</td></tr>
+<tr><td>Ayrıntılı plan</td><td>Bu yer için tam planı açar.</td></tr>
+<tr><td>Noktaya götür / Haritada / Kaydet</td><td>Yönlendirir, haritada gösterir veya noktalarınıza ekler.</td></tr>
+<tr><td>Neden bu puan?</td><td>Puanı yükselten (✓) ve düşüren (△) etkenler.</td></tr>
+<tr><td>Tüm balıklar ve yemler</td><td>Türlerin saatleri, puanı, yemi ve yasal sınırı. “yasak” yazan türü avlamayın.</td></tr>
+<tr><td>Bölgedeki meraları bul</td><td>Meralar ekranına götürür.</td></tr>
+<tr><td>Bölge değiştir</td><td>Yer adı arayın veya <b>Konumum</b>’u seçin.</td></tr>
+<tr><td>Şu anki hava</td><td>Kısa hava özeti; <b>Detaylı hava</b> ile tam ekran.</td></tr>
+<tr><td>Diğer yerler / Bu hafta</td><td>Sıradaki seçenekler ve haftanın en iyi gün ve saatleri.</td></tr></table>
+
+<h2 id="seans">6. Ava başladım (hızlı kayıt)</h2>
+<figure><img src="kilavuz/seans.jpg" alt="Av sürerken balık kayıt formu"></figure>
+<ol>
+<li><b>● Ava başladım</b> (Bugün veya Günlük ekranında): konum ve saat otomatik alınır.</li>
+<li>Balık tutunca tür, boy ve yemi yazıp <b>Balık tuttum</b>’a basın. Geri bıraktıysanız işaretleyin. Boy veya yasak sınırına takılan kayıtta uyarı çıkar.</li>
+<li><b>Avı bitir</b>: balık yoksa “Av çıkmadı” olarak kaydetmek isteyip istemediğiniz sorulur. <b>Vazgeç</b> oturumu iptal eder; kaydedilmiş balıklar silinmez.</li>
+</ol>
+<p>Merada internet yoksa kayıt yine yapılır; o saatin hava bilgisi internet gelince tamamlanır.</p>
+
+<h2 id="meralar">7. Meralar (bölge keşfi)</h2>
+<div class="pair"><figure><img src="kilavuz/meralar.jpg" alt="Meralar ekranı"><figcaption>Tarama ayarları ve aylık balık takvimi</figcaption></figure><figure><img src="kilavuz/liste.jpg" alt="Bulunan mera listesi"><figcaption>Bulunan noktalar</figcaption></figure></div>
+<table><tr><th>Ayar / düğme</th><th>Ne işe yarar</th></tr>
+<tr><td>Biga ve çevresi: tüm kıyı</td><td>Şevketiye–Misakça arasındaki ana kara kıyısını tarar.</td></tr>
+<tr><td>Bugün / Yarın</td><td>Puan ve saatlerin hesaplanacağı gün.</td></tr>
+<tr><td>Kıyıdan / Tekneden</td><td>Varsayılan kıyıdır. Tekne seçeneğinde küçük bot için daha sıkı rüzgar ve dalga sınırı uygulanır.</td></tr>
+<tr><td>Başka bölge ve ayarlar</td><td>Başka yer arama, yarıçap (15–45 km), adaları ve karşı kıyıyı dahil etme.</td></tr>
+<tr><td>Puana göre / Kıyı sırası / Yakına göre</td><td>Listeyi sıralar. “Yakına göre” taranan bölgenin merkezine göredir.</td></tr>
+<tr><td>Yalnız bakir adayları</td><td>Yaklaşık 1,2 km içinde haritada kayıtlı yerleşim, iskele veya olta yeri olmayan noktalar.</td></tr>
+<tr><td>Tümü haritada / GPX</td><td>Noktaları haritada gösterir veya navigasyon cihazına aktarılacak dosya indirir.</td></tr></table>
+<p>İlk tarama internet hızına göre birkaç dakika sürebilir; sonuçlar hemen listelenir, dip bilgisi ve yer adları geldikçe tamamlanır.</p>
+<h3>Bir noktayı açınca</h3>
+<figure><img src="kilavuz/mera.jpg" alt="Mera ayrıntısı"></figure>
+<table><tr><th>Bilgi</th><th>Anlamı</th></tr>
+<tr><td>Balık noktası</td><td>Yemin veya sahtenin düşmesi hedeflenen koordinat (kıyıdan yaklaşık 100 m).</td></tr>
+<tr><td>Durma noktası</td><td>Kıyıda duracağınız yer.</td></tr>
+<tr><td>Kıyıdan açığa derinlik</td><td>100, 250, 500 ve 1000 metredeki derinlik. “--” veri yok demektir.</td></tr>
+<tr><td>Dip ve yapı</td><td>Kum, taş, deniz çayırı gibi dip türü; derinlik kırığı gibi yapılar.</td></tr>
+<tr><td>Kırmızı uyarı</td><td>Yakında liman, marina, sanayi veya askeri alan kaydı var: av yasak veya erişime kapalı olabilir.</td></tr>
+<tr><td>Balık satırları</td><td>Tür, önerilen saat, puan, yem ve verimli aylar.</td></tr>
+<tr><td>Yol tarifi / Noktaya götür</td><td>Harita uygulamasında rota veya canlı yön.</td></tr>
+<tr><td>Haritada / Koordinatı kopyala / Hava / Kaydet / Av ekle</td><td>Noktayla ilgili hızlı işlemler.</td></tr>
+<tr><td>Gittiniz mi? 👍 👎 ⛔</td><td>İyi, kötü veya ulaşılamıyor diye işaretleyin; sonraki taramalar bunu dikkate alır.</td></tr></table>
+<div class="note">Derinlik hücresi yaklaşık 115 m’dir; tek kaya ve batık görünmez. Kıyıya yakın yaklaşık 200–300 m çoğu yerde ölçülmemiştir; uygulama bunu noktada ayrıca yazar. Seyir için kullanmayın. Ulaşımı, özel mülkü ve yasakları yerinde kontrol edin.</div>
+
+<h2 id="gotur">8. Noktaya götür</h2>
+<figure><img src="kilavuz/gotur.jpg" alt="Noktaya yönlendirme ekranı"></figure>
+<ul>
+<li>Kalan <b>mesafeyi</b> ve <b>yönü</b> canlı gösterir; vardığınızda “Noktadasınız” yazar.</li>
+<li>Yürürken ok gidiş yönünüze göredir. Dururken telefonun üstü kuzeye bakıyormuş gibi gösterilir.</li>
+<li>Ekranı açık tutmaya çalışır; pil tüketimi artar. İşiniz bitince <b>Kapat</b>.</li>
+</ul>
+<div class="note">Ok kuş uçuşu yönü gösterir; yol, uçurum, kayalık, özel mülk ve yasak alanları bilmez. Araçla gidiş için <b>Yol tarifi</b>’ni kullanın.</div>
+
+<h2 id="hava">9. Hava</h2>
+<figure><img src="kilavuz/hava.jpg" alt="Hava ekranı"></figure>
+<p>Yer arayın, <b>Konumum</b> veya <b>Haritadan seç</b> deyin; kayıtlı noktalarınız da düğme olarak görünür. <b>Bu nokta için av planı</b> doğrudan plana geçer.</p>
+<table><tr><th>Bölüm</th><th>İçerik</th></tr>
+<tr><td>Şu an</td><td>Rüzgar (km/s ve knot), hamle, basınç ve 3 saatlik değişimi, hava, yağış, görüş, dalga, ölü dalga, su sıcaklığı, akıntı, gelgit, ay, gün doğumu ve batımı.</td></tr>
+<tr><td>Balık için koşullar</td><td>O saatin puanı, etkenleri, kıyıdan güvenlik kararı ve 3,60 m’lik küçük bot için ayrı uyarı.</td></tr>
+<tr><td>Gelgit</td><td>Su seviyesi grafiği, çekilme ve kabarma saatleri.</td></tr>
+<tr><td>Ay durumu</td><td>7 günlük evre, doğuş, batış ve ana dönem.</td></tr>
+<tr><td>Saatlik tahmin</td><td>Windy benzeri tablo; saatlik veya 3 saatlik.</td></tr>
+<tr><td>Model karşılaştırması</td><td>Üç hava modeli (ECMWF, GFS, ICON) birbirine yakınsa tahmine güven artar.</td></tr>
+<tr><td>Windy katman haritası</td><td>Rüzgar, hamle, yağış, basınç, sıcaklık, dalga, su sıcaklığı, bulut. İnternet gerekir.</td></tr></table>
+
+<h2 id="harita">10. Harita</h2>
+<figure><img src="kilavuz/harita.jpg" alt="Harita ekranı"></figure>
+<ul>
+<li>Sağ üstteki katman simgesinden <b>Uydu</b> / <b>Harita</b> görünümünü ve <b>Deniz işaretleri</b>’ni seçin.</li>
+<li>Haritada bir yere dokunun: <b>Hava durumu, Noktaya götür, Burada planla, Noktayı kaydet, Buraya av ekle, Yol tarifi</b>.</li>
+<li><b>Sarı</b> işaretler noktalarınız, <b>kırmızı</b> işaretler avlarınızdır.</li>
+<li><b>Konumum</b>, <b>Yağış radarı</b> (son radar görüntüsü), <b>Rüzgar haritası</b> ve <b>Bölge keşfi</b> düğmeleri üsttedir.</li>
+</ul>
+<h3>Mera taraması (haritanın altında)</h3>
+<p>Haritayı bir kıyıya getirip <b>Bu alanı tara</b> deyin. Ekranın ortasından 3–8 km yarıçapta derinlik, dip yapısı ve koşullara göre numaralı noktalar çıkar. Küçük bir koyu ayrıntılı incelemek için idealdir.</p>
+
+<h2 id="plan">11. Av planla</h2>
+<figure><img src="kilavuz/plan.jpg" alt="Plan sonucu"></figure>
+<ol>
+<li><b>Su:</b> deniz kıyısı veya tatlı su.</li>
+<li><b>Teknik:</b> Spin, Hafif spin, LRF, Shore jig, Dip/surf, Şamandıra, Kalamar (egi), Fly. Kayıtlı takımınızı da seçebilirsiniz.</li>
+<li><b>Nokta:</b> Konumum, haritadan veya kayıtlı noktalardan.</li>
+<li><b>Gün</b> (14 güne kadar) ve isterseniz <b>hedef tür</b>.</li>
+<li><b>Planı oluştur</b>.</li>
+</ol>
+<table><tr><th>Sonuç bölümü</th><th>Ne gösterir</th></tr>
+<tr><td>Puan ve tahmin güveni</td><td>Günün genel değeri. İleri günlerde güven düşer.</td></tr>
+<tr><td>14 günlük görünüm</td><td>Bir güne dokunarak değiştirin. “!” güvenli saat olmadığını gösterir.</td></tr>
+<tr><td>En iyi atış pencereleri</td><td>Önerilen saat aralıkları. <b>Planı kaydet</b> veya <b>Takvime hatırlatma</b>.</td></tr>
+<tr><td>Usta yorumu</td><td>Kurallara dayalı hazır yorum. <b>Metin paylaş</b>, <b>Görsel kart</b>, <b>Soruyu kopyala</b> (başka bir yapay zekâya yapıştırmak için).</td></tr>
+<tr><td>Yapay zekâ mentor</td><td>İsteğe bağlı; kendi Gemini anahtarınız gerekir.</td></tr>
+<tr><td>Grafikler</td><td>Saatlik puan, rüzgar ve dalga; 3 günlük sıcaklık, basınç, yağış, rüzgar, su seviyesi.</td></tr>
+<tr><td>Ayrıntılı veriler</td><td>Saat seçin; her kutuya dokununca açıklaması açılır. Klorofil yalnızca bilgisayarda ve veri varsa görünür.</td></tr>
+<tr><td>Puanı ne belirledi?</td><td>Her etkenin katkısı.</td></tr>
+<tr><td>Hangi balık, saat kaçta?</td><td>Tür sıralaması, yem ve yasal sınır.</td></tr>
+<tr><td>Bölgede kayıtlı balıklar</td><td>Yaklaşık 40 km içinde herkese açık gözlemler.</td></tr>
+<tr><td>Hazırlık listesi</td><td>Tekniğe göre yanınıza alacaklarınız.</td></tr></table>
+
+<h2 id="gunluk">12. Av günlüğü</h2>
+<figure><img src="kilavuz/gunluk.jpg" alt="Günlük ekranı"></figure>
+<ul>
+<li><b>Av ekle:</b> tarih, tür, boy, ağırlık, adet, yem, nokta (kayıtlı, Konumum veya haritadan), fotoğraf, not. Balığı bıraktıysanız veya av çıkmadıysa işaretleyin.</li>
+<li><b>Fotoğraftan türü tahmin et:</b> Gemini anahtarı ister; yanılabilir.</li>
+<li><b>İstatistik:</b> tür, nokta, yem ve saat dilimine göre dağılım. <b>Rekorlarım</b> en büyük balıklarınızdır.</li>
+<li>Her kayıtta <b>Paylaş</b> (görsel kart), <b>Düzenle</b>, <b>Sil</b>.</li>
+<li><b>Avlarımla sına:</b> geçmiş avlarınızın gününü gerçek hava verisiyle yeniden puanlar; tahmin sizde işe yarıyor mu gösterir. Anlamlı sonuç için en az 20–30 av gerekir.</li>
+<li><b>Tahmin sizden öğreniyor:</b> en az <b>8 avlı</b> ve <b>8 boş</b> kayıt olunca puan ağırlıkları size göre ayarlanır. Bir noktanın yakınında 5 veya daha fazla av olunca saat alışkanlığınız da hesaba katılır.</li>
+</ul>
+<div class="tip">Tahmini geliştirmenin en iyi yolu <b>boş geçen avları da</b> kaydetmektir.</div>
+
+<h2 id="noktalar">13. Noktalarım</h2>
+<ul>
+<li><b>Haritadan ekle</b> ile veya Bugün, Meralar ve Harita ekranlarındaki kaydet düğmesiyle nokta ekleyin.</li>
+<li>Her noktada <b>Planla, Haritada, Yol tarifi, Noktaya götür, Düzenle, Sil</b>.</li>
+<li><b>Fırsat taraması (7 gün):</b> noktalarınız için haftanın en iyi gün ve saatlerini sıralar; ilk 10’u takvime eklenebilir.</li>
+<li><b>GPX indir:</b> noktaları başka harita veya GPS cihazına aktarır.</li>
+<li><b>Biga–Bozcaada örnekleri:</b> hazır 10 nokta. Koordinatları doğrulanmamıştır; bazıları karada olabilir.</li>
+</ul>
+
+<h2 id="planlar">14. Kayıtlı planlar ve takım çantası</h2>
+<p><b>Kayıtlı planlar:</b> “Güncel veriyle aç” planı yeni hava verisiyle hesaplar. Listede görünen puan, kaydettiğiniz andaki puandır.</p>
+<p><b>Takım çantam:</b> kamış, makine, misina, yem ve hazır takımlarınızı yazın. “Takım” türündekiler plan ekranında seçilir; yem adları av eklerken önerilir.</p>
+
+<h2 id="turler">15. Tür rehberi</h2>
+<p>Deniz ve tatlı su türleri: mevsim ayları, yem, en verimli saat, su sıcaklığı, uygun teknik, <b>asgari boy ve av yasakları</b>. <b>Fotoğraf göster</b> ve <b>Bu tür için planla</b> düğmeleri her kartta vardır.</p>
+<div class="note">Yasal bilgiler amatör avcılık tebliğinin uygulamaya işlendiği tarihteki halidir. Avlanmadan önce ekrandaki <b>Resmi metin</b> bağlantısından güncelini kontrol edin; yerel yasaklar ayrıca geçerlidir.</div>
+
+<h2 id="ayarlar">16. Ayarlar ve yedek</h2>
+<table><tr><th>Bölüm</th><th>Ne işe yarar</th></tr>
+<tr><td>Güvenlik sınırları</td><td>Kabul ettiğiniz en yüksek rüzgar ve dalga. Deneyiminize göre düşük tutun.</td></tr>
+<tr><td>Bildirimler</td><td>Seçtiğiniz puanı geçen fırsatlar ve plan günleri. <b>Yalnızca uygulama açıkken</b> çalışır.</td></tr>
+<tr><td>Yapay zekâ (isteğe bağlı)</td><td>Google AI Studio’dan kendi ücretsiz anahtarınız. Yalnızca cihazda durur, yedeğe girmez. Ücretsiz kullanımda gönderilenleri Google ürün geliştirmede kullanabilir. Anahtarınızı kimseyle paylaşmayın.</td></tr>
+<tr><td>Yedek indir / Yedek yükle</td><td>Nokta, av, plan ve takımları dosyaya alır; yüklerken mevcut kayıtlara ekler.</td></tr>
+<tr><td>Konumumu yakınlarıma gönder</td><td>Konumunuzu paylaşmak için hazırlar. Merada yalnızsanız kullanın.</td></tr></table>
+<h3>Bilgisayardan telefona kayıt taşıma</h3>
+<ol><li>Bilgisayarda <b>Ayarlar → Yedek indir</b>.</li><li>Dosyayı Google Drive gibi bir yolla telefona alın.</li><li>Telefonda <b>Ayarlar → Yedek yükle</b>.</li></ol>
+<div class="tip">Kayıtlar yalnızca cihazınızdadır. Tarayıcı verisi silinirse gider; ara sıra yedek alın.</div>
+
+<h2 id="internetsiz">17. İnternetsiz kullanım</h2>
+<ul>
+<li>Yola çıkmadan internetliyken uygulamayı açın ve <b>⤓ İndir</b>’e basın.</li>
+<li>Uygulama ve kayıtlarınız internetsiz açılır. Kayıtlı tahmin 24 saate kadar görülebilir.</li>
+<li>Veri 3 saati geçince <b>güvenlik kararı verilmez</b>.</li>
+<li>Uydu/harita görüntüsü, radar, Windy ve yeni arama internet ister. “Noktaya götür” GPS ile çalışır.</li>
+</ul>
+
+<h2 id="gizlilik">18. Veriler ve gizlilik</h2>
+<table><tr><th>Veri</th><th>Kaynak</th></tr>
+<tr><td>Hava, deniz, yükseklik, yer arama</td><td>Open-Meteo</td></tr>
+<tr><td>Derinlik ve dip yapısı</td><td>EMODnet (Avrupa deniz veri ağı)</td></tr>
+<tr><td>Kıyı çizgisi, yerleşim, iskele, alanlar</td><td>© OpenStreetMap katkıcıları (ODbL)</td></tr>
+<tr><td>Balık gözlemleri ve fotoğraflar</td><td>iNaturalist</td></tr>
+<tr><td>Harita görüntüsü, radar, katmanlar</td><td>Esri, OpenSeaMap, RainViewer, Windy</td></tr>
+<tr><td>Klorofil (yalnız bilgisayar)</td><td>NOAA uydu verisi</td></tr></table>
+<p>Av günlüğünüz ve noktalarınız cihazınızda saklanır; uygulamanın kendi sunucusu yoktur. Bir yerin verisi istenirken o yerin <b>koordinatı</b> ilgili servise gider. Yapay zekâyı kullanırsanız sorunuz, plan verisi, koordinat veya seçtiğiniz fotoğraf Google’a gönderilir.</p>
+
+<h2 id="sorun">19. Sorun giderme</h2>
+<table><tr><th>Sorun</th><th>Çözüm</th></tr>
+<tr><td>“Konum alınamadı”</td><td>Telefon ayarlarından konumu ve tarayıcının/uygulamanın konum iznini açın; açık havada deneyin.</td></tr>
+<tr><td>“Servis yanıt vermiyor” / “servis dolu”</td><td>Ücretsiz sunucular bazen yoğundur. Bir iki dakika sonra yenileyin.</td></tr>
+<tr><td>“Veri … saat önce alınmış”</td><td>İnternete bağlanıp ⟳ basın.</td></tr>
+<tr><td>Mera listesinde dip bilgisi eksik</td><td>Servis yavaş olabilir; bekleyin veya sonra yeniden tarayın. Bazı yerlerde ölçüm yoktur.</td></tr>
+<tr><td>Eski ekran görünüyor</td><td>Uygulamayı tamamen kapatıp iki kez açın.</td></tr>
+<tr><td>Bildirim gelmiyor</td><td>Ayarlar’da bildirimi ve sistem iznini açın; uygulama açık olmalı.</td></tr>
+<tr><td>Kayıtlar telefonda görünmüyor</td><td>Cihazlar ayrıdır; yedek ile taşıyın.</td></tr></table>
+
+<h2 id="sozluk">20. Küçük sözlük</h2>
+<table><tr><th>Terim</th><th>Anlamı</th></tr>
+<tr><td>Hamle</td><td>Rüzgarın ani en yüksek değeri.</td></tr>
+<tr><td>Knot (kt)</td><td>Denizci hız birimi; 1 kt = 1,85 km/saat.</td></tr>
+<tr><td>Dalga periyodu</td><td>İki dalga arasındaki süre. Uzun periyot kıyıda daha güçlü dalga demektir.</td></tr>
+<tr><td>Ölü dalga</td><td>Uzaktaki rüzgardan gelen dalga.</td></tr>
+<tr><td>Solunar</td><td>Ayın konumuna göre varsayılan hareketli saatler; bilimsel kanıtı sınırlıdır.</td></tr>
+<tr><td>Atış penceresi</td><td>Koşulların en uygun olduğu saat aralığı.</td></tr>
+<tr><td>Bakir adayı</td><td>Yakınında haritada kayıtlı yapı ve yerleşim görünmeyen nokta; kimsenin gitmediği anlamına gelmez.</td></tr>
+<tr><td>Spin / LRF / Shore jig / Egi</td><td>Sahteyle at-çek; çok hafif takımla at-çek; kıyıdan metal jig; kalamar yemlemesi.</td></tr>
+<tr><td>GPX</td><td>Koordinatları harita ve GPS cihazlarına taşıyan dosya.</td></tr></table>
+<p><b>Rastgele!</b></p>
+<a class="back" href="./">← Uygulamaya dön</a>
+</main>
+</body>
+</html>

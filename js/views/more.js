@@ -11,5 +11,5 @@ const ITEMS = [
 ];
 
 export function render(root) {
-    root.innerHTML = `<div class="menu">${ITEMS.map(([v, title, text]) => `<button type="button" class="card" data-nav="${v}"><b>${title}</b><small>${text}</small></button>`).join('')}</div>${install.card()}`;
+    root.innerHTML = `<div class="menu">${ITEMS.map(([v, title, text]) => `<button type="button" class="card" data-nav="${v}"><b>${title}</b><small>${text}</small></button>`).join('')}<a class="card" href="kilavuz.html"><b>Kullanım kılavuzu</b><small>Her ekran ve düğme ne işe yarar</small></a></div>${install.card()}`;
 }

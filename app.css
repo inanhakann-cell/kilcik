@@ -88,7 +88,7 @@ details details,.hero details{margin-top:10px}
 .btn.icon{min-width:48px;font-size:1.25rem;padding:0}
 .btn:active:not(:disabled),.chip:active,nav button:active,.menu button:active,.window:active{filter:brightness(1.35);transform:scale(.98)}
 .leaflet-touch .leaflet-bar a{width:44px;height:44px;line-height:44px}
-.menu{display:grid;gap:10px}.menu .card{display:block;width:100%;margin:0;text-align:left;color:inherit;font:inherit;cursor:pointer;min-height:64px}.menu small{display:block;color:var(--mute)}.menu+.card{margin-top:12px}
+.menu{display:grid;gap:10px}.menu .card{display:block;width:100%;margin:0;text-align:left;color:inherit;font:inherit;cursor:pointer;min-height:64px}.menu small{display:block;color:var(--mute)}.menu a.card{text-decoration:none}.menu+.card{margin-top:12px}
 #guide{position:fixed;inset:0;z-index:1900;background:var(--bg);overflow:auto;display:flex;flex-direction:column;align-items:center;text-align:center;padding:calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))}
 #guide .needle{font-size:6.5rem;line-height:1.1;color:var(--accent);font-weight:800;transition:transform .4s}
 #guide .far{font-size:2.8rem;font-weight:800;margin:0}#guide .way{font-size:1.2rem}#guide .row{justify-content:center}
