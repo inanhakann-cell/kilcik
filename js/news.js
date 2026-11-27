@@ -4,6 +4,13 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 32, date: '27.11.2026', title: 'Ada noktaları düzeltildi',
+        items: [
+            'Bugün ekranı artık arada deniz olan ada noktalarını önermiyor.',
+            'Adadaki bir noktada “feribot veya tekne gerekir” uyarısı çıkıyor.'
+        ]
+    },
+    {
         v: 31, date: '26.11.2026', title: 'Daha sade ve kolay',
         items: [
             'Alt menü dört düğme: Bugün, Meralar, Hava, Günlük. Diğerleri üstteki ☰ Menü’de.',

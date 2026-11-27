@@ -3,7 +3,7 @@ import * as C from '../core.js';
 import * as api from '../api.js';
 import { loadGrid, findSpots, coastSpots, describe } from '../seabed.js';
 import { depthProfile, habitat, describePlace, coastalOnly, evaluate } from '../region.js';
-import { humanPoints, restrictedAreas, nearRestricted, seenNearby, observations, placeName, coastline, bundled, distanceKm } from '../places.js';
+import { humanPoints, restrictedAreas, nearRestricted, seenNearby, observations, placeName, coastline, bundled, distanceKm, islandWarning } from '../places.js';
 import { datesOf } from '../planner.js';
 import { PEAK } from '../activity.js';
 import { SPECIES } from '../species.js';
@@ -169,6 +169,7 @@ function card(s, n, open) {
             <p>Noktada <b>${s.f.depth.toFixed(0)} m</b> · dip: <b>${s.bottom ? esc(s.bottom.name) : 'veri yok'}</b>${s.bottom ? ` <span class="mute">(${esc(s.bottom.scale)})</span>` : ''}</p>
             <p class="mute">${esc(describe(s.f, result.mode === 'tekne' ? 'tekne' : 'kiyi').filter(t => !t.includes('kumluk') && !t.includes('taşlık')).join(' · ') || 'belirgin derinlik yapısı yok')}${s.shore ? ` · rüzgar ${s.shore}` : ''}</p>
             ${extras.floorChips(go.lat, go.lon)}`, open, 'sub')}
+        ${islandWarning(go.lat, go.lon)}
         ${fold(`more:${key}`, 'Diğer', `<p class="mute">Puan ${s.total} · ${esc(result.area.name)} merkezine ${distanceKm(result.area.lat, result.area.lon, s.lat, s.lon).toFixed(1)} km</p>
             <p class="mono">Balık noktası <b>${s.lat}, ${s.lon}</b>${s.stand ? `<br>Durma noktası (kıyı) ${s.stand.lat}, ${s.stand.lon} · atış ~${s.stand.cast} m` : ''}</p>
             <p class="mute">Verimli aylar: ${s.fish.map(f => `${esc(f.name)} (${(PEAK[f.name] || []).map(m => MONTHS[m - 1]).join(', ')})`).join('; ') || '--'}</p>

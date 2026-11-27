@@ -2,6 +2,7 @@
 import { getJson, shoreInfo } from './api.js';
 import { cacheGet, cacheSet } from './store.js';
 import { LATIN } from './species.js';
+import { landmasses, islandAt, sameLand } from './islands.js';
 
 // Ucretsiz sunucular sik sik dolu olur; ilk yanit veren kullanilir.
 const SERVERS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
@@ -20,7 +21,7 @@ const placeKey = (lat, lon, km) => `places:${lat.toFixed(2)},${lon.toFixed(2)},$
 /** Kayitli arama sonucu: { list, fresh } veya null. */
 export async function cachedPlaces(lat, lon, km = 25) {
     const c = await cacheGet(placeKey(lat, lon, km));
-    return c ? { list: c.list, fresh: Date.now() - c.at < 7 * 86400000 } : null;
+    return c ? { list: await onSameLand({ lat, lon }, c.list), fresh: Date.now() - c.at < 7 * 86400000 } : null;
 }
 
 /** Deniz kiyisindaki mendirek, iskele, burun ve olta yerleri; en elverisli ve yakin olanlar. */
@@ -35,8 +36,10 @@ export async function findPlaces(lat, lon, km = 25, limit = 10) {
         const [label, bonus] = KINDS[kind];
         return { id: `osm_${e.type}_${e.id}`, name: t.name ? `${t.name} (${label.toLocaleLowerCase('tr-TR')})` : label, kind: label, bonus, lat: Number(p.lat.toFixed(5)), lon: Number(p.lon.toFixed(5)), named: Boolean(t.name), water: 'tuzlu', km: distanceKm(lat, lon, p.lat, p.lon) };
     }).filter(Boolean).sort((a, b) => (b.bonus + b.named * 3 - b.km / 5) - (a.bonus + a.named * 3 - a.km / 5));
+    // Arada deniz olan adalar onerilmez; kiyi cizgisi alinamazsa eleme yapilmaz.
+    const ways = await coastline(lat, lon, km).catch(() => null);
     const list = [];
-    for (const p of all) {
+    for (const p of ways ? sameLand(landmasses(ways), { lat, lon }, all) : all) {
         if (list.length >= limit) break;
         if (list.some(q => distanceKm(p.lat, p.lon, q.lat, q.lon) < 0.8) || list.filter(q => q.kind === p.kind).length >= 6) continue;
         // Ic sulardaki yapilari ele: cevresinde deniz seviyesinde su olmali.
@@ -95,15 +98,45 @@ export async function bundled(lat, lon, km) {
     return lat - dLat >= south && lat + dLat <= north && lon - dLon >= west && lon + dLon <= east ? data : null;
 }
 
+let lands = null, box = null;
+/** Uygulamayla gelen kiyi cizgisinden ada bilgisini bir kez hazirlar. */
+export async function loadLands() {
+    if (lands) return;
+    bundle ||= getJson('data/biga-kiyi.json').catch(() => { bundle = null; return null; });
+    const data = await bundle;
+    if (!data) return;
+    box = data.box;
+    lands = landmasses(data.ways.map(w => w.map(([lat, lon]) => ({ lat, lon }))));
+}
+
+/** Ada numarasi, anakara icin null; veri kapsami disinda undefined. */
+export function landOf(lat, lon) {
+    if (!lands || lat < box[0] || lat > box[2] || lon < box[1] || lon > box[3]) return undefined;
+    return islandAt(lands, lat, lon);
+}
+
+export const ISLAND_TEXT = 'Adada: karayoluyla gidilemez, feribot veya tekne gerekir.';
+export const islandWarning = (lat, lon) => (landOf(lat, lon) > 0 ? `<p class="warn">${ISLAND_TEXT}</p>` : '');
+
+/** Merkezden karayla ulasilamayan ada noktalarini eler (veri kapsami icinde). */
+export async function onSameLand(center, list) {
+    await loadLands();
+    return landOf(center.lat, center.lon) === undefined ? list : sameLand(lands, center, list);
+}
+
 /** Harita sunucusu yanit vermese de gosterilebilecek, uygulamayla gelen en yakin kiyi noktalari. */
 export async function coastPlaces(lat, lon, km = 25, limit = 6) {
     const data = await bundled(lat, lon, 0);
     if (!data) return [];
     const points = data.ways.flat().map(([a, b]) => ({ lat: a, lon: b, km: distanceKm(lat, lon, a, b) })).filter(p => p.km <= km).sort((a, b) => a.km - b.km);
+    await loadLands();
+    const home = landOf(lat, lon);
     const out = [];
     for (const p of points) {
         if (out.length >= limit) break;
         if (out.some(o => distanceKm(o.lat, o.lon, p.lat, p.lon) < 3)) continue;
+        const land = landOf(p.lat, p.lon);
+        if (land && land !== home) continue;
         const [name, a, b] = data.settlements.reduce((best, s) => (distanceKm(p.lat, p.lon, s[1], s[2]) < distanceKm(p.lat, p.lon, best[1], best[2]) ? s : best));
         const near = distanceKm(p.lat, p.lon, a, b) <= 6;
         out.push({ ...p, id: `kiyi_${p.lat}_${p.lon}`, name: near ? `${name} yakını kıyı` : `Kıyı noktası · ${p.km.toFixed(1)} km`, water: 'tuzlu', bonus: 0 });

@@ -7,7 +7,7 @@ import { ruleFor, ruleText, inClosedSeason } from '../legal.js';
 import { ask } from '../ai.js';
 import { shareCard } from '../share.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
-import { seenNearby } from '../places.js';
+import { seenNearby, islandWarning } from '../places.js';
 import * as extras from '../extras.js';
 import { app, $, esc, uid, show, wind, options, chips, toast, download, copy, locate, persist, mapsUrl, grade, pill, opened, fold, SAFETY } from '../ui.js';
 
@@ -184,7 +184,7 @@ function renderResult(root) {
     ${fold('liste', 'Hazırlık listesi', [...CHECK.ortak, ...(CHECK[d.technique] || [])].map(t => `<label class="check"><input type="checkbox"> ${esc(t)}</label>`).join(''), open)}
     ${fold('zeka', 'Yapay zekâya sor (isteğe bağlı)', `<form data-form="mentor"><label>Sorunuz (isteğe bağlı)<input name="q" maxlength="300" placeholder="Hangi sahte, hangi derinlik?"></label><button class="btn primary">Mentora sor</button></form>
         <p id="answer" class="answer">${esc(result.answer)}</p><p class="mute">Kendi ücretsiz Gemini anahtarınızla çalışır (Ayarlar). Plan verisi ve noktanın koordinatı Google'a gönderilir. Yanıt hatalı olabilir.</p><button class="btn" data-act="ai">Soruyu kopyala</button>`, open)}
-    <a class="btn big" href="${mapsUrl(d.lat, d.lon)}" target="_blank" rel="noopener">Yol tarifi al</a>`;
+    ${islandWarning(d.lat, d.lon)}<a class="btn big" href="${mapsUrl(d.lat, d.lon)}" target="_blank" rel="noopener">Yol tarifi al</a>`;
     paintFish();
     paintConfidence();
     drawChart();

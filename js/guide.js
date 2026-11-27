@@ -1,5 +1,6 @@
 // Telefonda noktaya yuruyerek ulasma: canli mesafe ve yon. Ekran acik tutulur.
 import { esc, toast, mapsUrl } from './ui.js';
+import { landOf, islandWarning, ISLAND_TEXT } from './places.js';
 
 const NAMES = ['Kuzey', 'Kuzeydoğu', 'Doğu', 'Güneydoğu', 'Güney', 'Güneybatı', 'Batı', 'Kuzeybatı'];
 const rad = d => d * Math.PI / 180;
@@ -31,8 +32,9 @@ export function open(lat, lon, name) {
     box.setAttribute('aria-label', 'Noktaya yönlendirme');
     box.innerHTML = `<p class="mute">Noktaya yönlendirme</p><h1>${esc(name || 'Seçilen nokta')}</h1><p class="mono">${lat.toFixed(5)}, ${lon.toFixed(5)}</p>
         <div class="needle" hidden>↑</div><p class="far">Konum aranıyor…</p><p class="way"></p><p class="mute acc"></p>
+        <div class="sea">${islandWarning(lat, lon)}</div>
         <p class="warn">Kuş uçuşu yöndür; yol, kayalık, özel mülk ve yasak alanları göstermez.</p>
-        <div class="row wrap"><a class="btn" href="${mapsUrl(lat, lon)}" target="_blank" rel="noopener">Yol tarifi</a><button class="btn primary" data-guide-close>Kapat</button></div>`;
+        <div class="row wrap"><a class="btn route" href="${mapsUrl(lat, lon)}" target="_blank" rel="noopener">Yol tarifi</a><button class="btn primary" data-guide-close>Kapat</button></div>`;
     box.querySelector('[data-guide-close]').addEventListener('click', () => history.back());
     document.body.append(box);
     history.pushState({ ...history.state, guide: true }, '');
@@ -40,6 +42,17 @@ export function open(lat, lon, name) {
     watch = navigator.geolocation.watchPosition(p => {
         const here = { lat: p.coords.latitude, lon: p.coords.longitude };
         const c = course(here, target);
+        // Arada deniz varsa yol tarifi calismaz: uyar ve noktayi yalnizca haritada ac.
+        const from = landOf(here.lat, here.lon), to = landOf(lat, lon);
+        // Kapsam disindaki konum (or. Canakkale merkez) anakara sayilir.
+        if (to !== undefined) {
+            const apart = to !== (from ?? null);
+            const text = to ? ISLAND_TEXT : 'Arada deniz var: bu noktaya feribot veya tekne gerekir.';
+            box.querySelector('.sea').innerHTML = apart ? `<p class="warn">${text}</p>` : '';
+            const route = box.querySelector('.route');
+            route.href = apart ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : mapsUrl(lat, lon);
+            route.textContent = apart ? 'Haritada aç' : 'Yol tarifi';
+        }
         const moving = Number.isFinite(p.coords.heading) && p.coords.speed > 0.5;
         const needle = box.querySelector('.needle');
         needle.hidden = false;

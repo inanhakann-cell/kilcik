@@ -3,7 +3,7 @@ import * as C from '../core.js';
 import * as api from '../api.js';
 import { contextFor, planFor, datesOf } from '../planner.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
-import { findPlaces, cachedPlaces, coastPlaces, seenNearby, distanceKm } from '../places.js';
+import { findPlaces, cachedPlaces, coastPlaces, onSameLand, seenNearby, distanceKm } from '../places.js';
 import { SPECIES, SAMPLE_SPOTS } from '../species.js';
 import { ruleFor, inClosedSeason, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
@@ -66,7 +66,8 @@ async function compute() {
             findPlaces(area.lat, area.lon)
                 .then(() => { searching = ''; compute(); }, () => { searching = ''; searchFailed = key; paint(); });
         }
-        const mine = app.state.spots.map(s => ({ ...s, mine: true, bonus: 0, km: distanceKm(area.lat, area.lon, s.lat, s.lon) })).filter(s => s.km <= 60);
+        const saved = app.state.spots.map(s => ({ ...s, mine: true, bonus: 0, km: distanceKm(area.lat, area.lon, s.lat, s.lon) })).filter(s => s.km <= 60);
+        const mine = await onSameLand(area, saved);
         const list = [...mine, ...found.filter(p => !mine.some(m => distanceKm(m.lat, m.lon, p.lat, p.lon) < 0.5))].slice(0, 14);
         // Yer listesi bossa uygulamayla gelen kiyi cizgisinden en yakin noktalar kullanilir (ic noktalar mera sayilmaz).
         if (!list.length) list.push(...await coastPlaces(area.lat, area.lon));
