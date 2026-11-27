@@ -8,6 +8,7 @@ import { SPECIES, SAMPLE_SPOTS } from '../species.js';
 import { ruleFor, inClosedSeason, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
 import * as session from '../session.js';
+import * as donus from '../donus.js';
 import * as install from '../install.js';
 import * as extras from '../extras.js';
 import * as push from '../push.js';
@@ -297,6 +298,7 @@ function draw(root) {
     <p class="mute">${busy ? esc(progress) : result ? `Güncellendi ${new Date(result.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}${searching ? ' · çevredeki meralar aranıyor' : ''}</p>
     ${choosing ? `<section class="card"><h2>Bölge değiştir</h2><form class="row search" data-form="area"><input name="q" placeholder="Ör. Bandırma" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button></form><div id="areas" class="chips">${places}</div>
         <div class="row wrap"><button type="button" class="btn" data-act="here">Konumum</button></div></section>` : ''}
+    ${donus.tripCard()}
     ${session.active() ? session.card() : ''}
     ${stormBanner(result?.storm)}
     <div class="row top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın'], ['hafta', 'Hafta']], tab)}</div>

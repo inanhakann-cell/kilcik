@@ -1,5 +1,6 @@
 // Tek dokunusla av oturumu: baslat, balik ekle, bitir. Balik cikmazsa bos seans kaydedilir.
 import * as C from './core.js';
+import * as donus from './donus.js';
 import * as api from './api.js';
 import { contextFor, solunarFor, moonFor } from './planner.js';
 import { SPECIES } from './species.js';
@@ -62,10 +63,10 @@ export function returnText(place, time, now = new Date()) {
     return `Kıyıda balık avındayım. Dönüş saatim: ${tomorrow ? 'yarın ' : ''}${time}.\nKonumum: https://www.google.com/maps/search/?api=1&query=${place.lat.toFixed(5)},${place.lon.toFixed(5)}\nO saatten sonra benden haber alamazsan beni ara.`;
 }
 
-export const returnBox = () => `<details class="donus"><summary>Yakınıma dönüş saatimi gönder</summary>
+export const returnBox = () => (donus.trip() ? '' : `<details class="donus"><summary>Yakınıma dönüş saatimi gönder</summary>
     <label>Dönüş saatim<input type="time" name="donus" value="${new Date(Date.now() + 3 * 3600000).toTimeString().slice(0, 2)}:00" required></label>
     <button type="button" class="btn big" data-act="sesshare">Konumumla gönder</button>
-    <p class="mute">Telefonun paylaşma ekranı açılır; kişiyi siz seçip gönderirsiniz. Dönmezseniz kendiliğinden haber gitmez.</p></details>`;
+    <p class="mute">Telefonun paylaşma ekranı açılır; kişiyi siz seçip gönderirsiniz. Bu mesaj dönmediğinizde kendiliğinden haber vermez.</p>${donus.setup()}</details>`);
 
 // Konum beklenirken telefon paylasma iznini dusurebilir; hazir mesaj ikinci dokunusta gonderilir.
 let ready = null;
@@ -114,6 +115,9 @@ const store = async value => { current = value; await cacheSet(KEY, value); };
 
 export const actions = refresh => ({
     sesshare: shareReturn,
+    donuskur: () => donus.start(document.querySelector('.view:not([hidden]) .donus'), current, refresh),
+    donusbitti: () => donus.finish(refresh),
+    donusuzat: () => donus.extend(refresh),
     sesstart: async () => {
         let place;
         try {

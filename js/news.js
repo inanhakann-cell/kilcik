@@ -4,6 +4,16 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 42, date: '27.11.2026', title: 'Dönmezsem haber ver',
+        items: [
+            'Yakınınız kendi telefonunda ☰ Menü → “Yakınım için uyarı al” bölümünden bir kod oluşturup size göndersin.',
+            'Ava çıkarken “Yakınıma dönüş saatimi gönder” bölümünde saati, adınızı ve kodu yazıp “Dönmezsem haber ver”e basın.',
+            'Dönünce “Döndüm”e basın. Basmazsanız saatten 30–40 dakika sonra yakınınıza konumunuzla uyarı bildirimi gider.',
+            'Bildirim gecikebilir veya ulaşmayabilir; tek güvenceniz olmasın. Acil durumda 112 veya Sahil Güvenlik 158.',
+            '☰ Menü → “QR ile kur”: arkadaşınız karekodu okutup uygulamayı kolayca kursun.'
+        ]
+    },
+    {
         v: 41, date: '27.11.2026', title: 'Güvenlik: haber ver',
         items: [
             '“Yakınıma dönüş saatimi gönder”: Ava başladım bölümünde saati seçin; konumunuz ve dönüş saatiniz hazır mesaj olur, kişiyi siz seçip gönderirsiniz.',

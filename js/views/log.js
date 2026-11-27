@@ -11,6 +11,7 @@ import { ask } from '../ai.js';
 import { shareCard } from '../share.js';
 import { contextFor, solunarFor } from '../planner.js';
 import * as session from '../session.js';
+import * as donus from '../donus.js';
 import { hourFactors } from '../session.js';
 
 let place = { lat: null, lon: null, spot: '' };
@@ -79,6 +80,7 @@ export function render(root, params = {}) {
         <datalist id="species">${SPECIES.map(s => `<option value="${esc(s.ad)}">`).join('')}</datalist>
         <datalist id="lures">${lures.map(t => `<option value="${esc(t.name)}">`).join('')}</datalist></form>`;
     root.innerHTML = `
+    ${donus.tripCard()}
     ${session.active() ? session.card() : ''}
     ${mode ? form : `<button type="button" class="btn primary huge" data-act="new" data-v="fish">🎣 Balık tuttum</button><button type="button" class="btn huge" data-act="new" data-v="blank">Boş döndüm</button>
     <p class="mute">Saat, konum ve hava kendiliğinden eklenir.</p>`}

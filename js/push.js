@@ -23,6 +23,7 @@ export const post = async (path, body) => {
     const res = await fetch(`${SERVER}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(out.error || `Sunucu ${res.status}`);
+    return out;
 };
 
 async function currentArea() {
@@ -55,7 +56,7 @@ export async function paint(root) {
         ${on ? '<button type="button" class="btn" data-act="pushtest">Deneme bildirimi gönder</button>' : ''}</div>`}
         ${on && !hint ? `<label class="check"><input type="checkbox" data-field="pushfollow" ${on.follow ? 'checked' : ''}> Bildirim bölgesi bulunduğum yeri izlesin</label>
         <p class="mute">Açıksa, uygulamayı başka bir yerde açtığınızda yeni bölgenin yaklaşık konumu sunucuya gönderilir.</p>` : ''}
-        <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider. “İzin verme (kapat)” fırtına nöbetini de kapatır.</p>
+        <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider. “İzin verme (kapat)” fırtına nöbetini ve yakın uyarısı kodunuzu da kapatır.</p>
         ${soundPart()}`;
 }
 
@@ -166,6 +167,8 @@ export const actions = {
             localStorage.removeItem(KEY);
             // Abonelik silinince firtina nobeti de kapanir.
             localStorage.removeItem('firtina-nobeti');
+            // Yakin kodu da bu abonelige baglidir.
+            localStorage.removeItem('yakin-kodum');
             toast('Bildirim gönderilmeyecek.', 'ok');
         } catch (err) { toast(`Kapatılamadı: ${err.message}`, 'bad'); }
         paint(root);

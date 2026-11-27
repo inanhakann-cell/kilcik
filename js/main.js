@@ -10,6 +10,7 @@ import * as today from './views/today.js';
 import * as weather from './views/weather.js';
 import * as explore from './views/explore.js';
 import * as session from './session.js';
+import * as donus from './donus.js';
 import * as more from './views/more.js';
 import * as guide from './guide.js';
 import * as install from './install.js';
@@ -140,6 +141,10 @@ try {
     window.addEventListener('hashchange', () => extras.receiveFromAddress());
     session.backfill().catch(() => {});
     window.addEventListener('online', () => session.backfill().catch(() => {}));
+    // Gonderilemeyen "Dondum" yeniden denenir; yakin kodunun suresi yenilenir.
+    donus.retry(() => app.go(current));
+    window.addEventListener('online', () => donus.retry(() => app.go(current)));
+    donus.renew();
     today.autoRefresh();
     ortak.start();
     navigator.storage?.persist?.().catch(() => {});

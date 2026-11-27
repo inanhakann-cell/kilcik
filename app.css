@@ -149,3 +149,4 @@ nav button{flex-direction:row;gap:10px;font-size:.95rem;padding:11px 14px;border
 .wchip{display:inline-block;border-radius:6px;padding:0 6px;white-space:nowrap;text-shadow:0 0 3px rgba(0,0,0,.35)}
 /* Guvenlik kutulari */
 .donus .btn.big,#nobet .btn.big{margin-top:12px}
+.nobetim{border-color:var(--ok)}.nobetim.gec{border:3px solid #f87171}.nobetim .btn.big,#yakin .btn.big{margin-top:10px}.kod{font:700 1.9rem ui-monospace,monospace;letter-spacing:.06em;user-select:all}
