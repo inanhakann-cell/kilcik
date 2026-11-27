@@ -111,6 +111,7 @@ export function render(root, params = {}) {
 }
 
 async function shrink(file) {
+    if (!/^image\//.test(file.type) || file.size > 30e6) throw new Error('Yalnızca 30 MB’tan küçük fotoğraf seçin.');
     const img = await createImageBitmap(file);
     const k = Math.min(1, 1000 / Math.max(img.width, img.height));
     const canvas = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * k), height: Math.round(img.height * k) });

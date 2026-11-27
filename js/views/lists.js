@@ -197,6 +197,8 @@ export const settings = {
     async change(field, input, root) {
         const file = input.files?.[0];
         if (field !== 'import' || !file) return;
+        // Asiri buyuk dosya cihazi kilitlemesin.
+        if (file.size > 100e6) return toast('Dosya çok büyük (en fazla 100 MB).', 'bad');
         let data = null;
         try { data = JSON.parse(await file.text()); } catch {}
         const legacy = Array.isArray(data?.logbook) || Array.isArray(data?.customSpots);

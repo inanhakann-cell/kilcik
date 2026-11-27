@@ -4,6 +4,14 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 39, date: '27.11.2026', title: 'Kalama sesi',
+        items: [
+            'İsterseniz bildirime dokununca veya uygulama açıkken bildirim gelince 3 saniyelik kalama sesi çalar (bir kez sorulur). iPhone ilk dokunuşu bekleyebilir.',
+            '☰ Menü → Av bildirimi → “Sesi dinle”.',
+            'Güvenlik güçlendirmeleri yapıldı.'
+        ]
+    },
+    {
         v: 38, date: '27.11.2026', title: 'Birlikte daha isabetli',
         items: [
             'İsterseniz av sonuçlarınızı isimsiz paylaşın; çevrede son 14 günde ne çıktığı Bugün ekranında görünür.',

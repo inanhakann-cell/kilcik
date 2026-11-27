@@ -2,6 +2,8 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#06131a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -61,37 +63,6 @@ h2{margin:0 0 6px;font-size:1.1rem;color:#2dd4bf}ol{margin:6px 0;padding-left:22
 <a class="btn" href="kilavuz.html">Kullanım kılavuzu</a>
 <p class="mute">Kayıtlarınız yalnızca kendi telefonunuzda durur. Konum izni sorulunca izin verin. Puanlar tahmindir; denizde kendi güvenliğiniz size aittir.</p>
 </main>
-<script>
-(() => {
-    // Ana ekran simgesinden acildiysa dogrudan uygulamaya gec.
-    if (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return location.replace('./');
-    const ua = navigator.userAgent;
-    const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const android = /Android/.test(ua);
-    const inApp = /; wv\)|WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Line\//.test(ua) || (ios && !/Safari\//.test(ua));
-    const $ = id => document.getElementById(id);
-    $('ios').hidden = !ios;
-    $('android').hidden = !android || inApp;
-    $('inapp').hidden = !(android && inApp);
-    $('desktop').hidden = ios || android;
-    let prompt = null;
-    addEventListener('beforeinstallprompt', e => { e.preventDefault(); prompt = e; $('install').hidden = false; $('manual').hidden = true; });
-    $('install').addEventListener('click', async () => {
-        if (!prompt) return;
-        await prompt.prompt();
-        const choice = await prompt.userChoice;
-        prompt = null;
-        $('install').hidden = true;
-        if (choice.outcome === 'accepted') $('done').hidden = false; else $('manual').hidden = false;
-    });
-    addEventListener('appinstalled', () => { $('done').hidden = false; $('install').hidden = true; $('manual').hidden = true; });
-    $('copy').addEventListener('click', async e => {
-        const url = new URL('kur.html', location.href).href;
-        try { await navigator.clipboard.writeText(url); e.target.textContent = 'Kopyalandı'; }
-        catch { window.prompt('Bağlantıyı kopyalayın:', url); }
-    });
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-})();
-</script>
+<script src="js/kur.js"></script>
 </body>
 </html>

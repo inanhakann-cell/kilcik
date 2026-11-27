@@ -19,8 +19,15 @@ import * as news from './news.js';
 import * as push from './push.js';
 import * as ortak from './ortak.js';
 import * as rehber from './views/rehber.js';
+import * as ses from './ses.js';
 import { loadLands } from './places.js';
 import { loadDip } from './dip.js';
+
+// Baska bir sitenin cercevesi icinde calismaz (tiklama tuzagina karsi).
+if (window.top !== window.self) {
+    document.body.textContent = 'KILÇIK başka bir sayfanın içinde açılamaz.';
+    throw new Error('cerceve icinde');
+}
 
 const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, rehber, ayarlar: settings, daha: more };
 // Telefonda menu altinda duran ekranlar
@@ -121,12 +128,13 @@ try {
     app.go('bugun');
     // Ana ekran simgesine basili tutunca acilan kisayollar
     const start = new URLSearchParams(location.search).get('git');
-    if (start) app.go(start);
+    if (start && Object.hasOwn(VIEWS, start)) app.go(start);
     // Arkadastan gelen nokta baglantisi
     const received = await extras.receiveFromAddress();
     // Yeni kullanici tanisma sorularini, eski kullanici guncelleme notunu bir kez gorur.
     if (!returning) { news.markSeen(); if (!received) await welcome.firstRun(); }
     else if (news.unseen()) news.open();
+    ses.start();
     // Bildirim izni sorusu diger acilis pencerelerinden sonra bir kez cikar.
     push.prompt();
     window.addEventListener('hashchange', () => extras.receiveFromAddress());

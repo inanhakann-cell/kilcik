@@ -92,5 +92,5 @@ export function dipText(lat, lon) {
 }
 export const dipLine = (lat, lon) => {
     const text = dipText(lat, lon);
-    return text ? `<p class="dip">Dip (yaklaşık): <b>${text}</b></p>` : '';
+    return text ? `<p class="dip">Dip (yaklaşık): <b>${text.replace(/[<>&"]/g, ' ')}</b></p>` : '';
 };

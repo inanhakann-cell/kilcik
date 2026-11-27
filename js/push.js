@@ -1,5 +1,6 @@
 // Av bildirimi aboneligi: yarin gitmeye degerse aksam telefona bildirim gelir (uygulama kapaliyken de).
 import * as api from './api.js';
+import * as ses from './ses.js';
 import { cacheGet } from './store.js';
 import { SAMPLE_SPOTS } from './species.js';
 import { app, esc, chips, toast } from './ui.js';
@@ -13,6 +14,10 @@ const saved = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catc
 const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const iosBrowser = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(navigator.standalone || matchMedia('(display-mode: standalone)').matches);
 let level = null;
+const soundPart = () => `<h3>Bildirim sesi: kalama (3 sn)</h3>
+    <label class="check"><input type="checkbox" data-field="pushsound" ${ses.wanted() ? 'checked' : ''}> Bildirimlerde kalama sesi çalsın</label>
+    <p class="mute">${ses.inApp() ? 'İşaretliyse av bildirimleri kalama sesiyle gelir.' : 'Bildirime dokununca veya uygulama açıkken bildirim gelince çalar. Uygulama kapalıyken bildirim telefonun kendi sesiyle gelir.'}</p>
+    <div class="row wrap"><button type="button" class="btn" data-act="pushsound">Sesi dinle</button></div>`;
 
 const post = async (path, body) => {
     const res = await fetch(`${SERVER}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -50,10 +55,16 @@ export async function paint(root) {
         ${on ? '<button type="button" class="btn" data-act="pushtest">Deneme bildirimi gönder</button>' : ''}</div>`}
         ${on && !hint ? `<label class="check"><input type="checkbox" data-field="pushfollow" ${on.follow ? 'checked' : ''}> Bildirim bölgesi bulunduğum yeri izlesin</label>
         <p class="mute">Açıksa, uygulamayı başka bir yerde açtığınızda yeni bölgenin yaklaşık konumu sunucuya gönderilir.</p>` : ''}
-        <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider.</p>`;
+        <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider.</p>
+        ${soundPart()}`;
 }
 
 export async function change(field, root) {
+    if (field === 'pushsound') {
+        ses.choose(!ses.wanted());
+        if (ses.wanted()) ses.play();
+        return paint(root);
+    }
     const on = saved();
     if (field !== 'pushfollow' || !on) return;
     const follow = !on.follow;
@@ -92,11 +103,14 @@ async function subscribe(wanted) {
         const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
         await send(sub, await currentArea(), wanted, Boolean(saved()?.follow));
         toast('Bildirimler açık.', 'ok');
+        ses.ask();
     } catch (err) { toast(`Bildirim açılamadı: ${err.message}`, 'bad'); }
 }
 
 /** Acilista bir kez sorar; tanisma veya guncelleme notu aciksa kapanmasini bekler. */
 export function prompt() {
+    // Bildirimi zaten acik olan kullaniciya yalnizca ses sorulur (bir kez).
+    if (offered() && supported() && saved() && Notification.permission === 'granted') ses.ask();
     if (!offered() || !supported() || iosBrowser() || saved() || localStorage.getItem(ASKED) || Notification.permission === 'denied') return;
     if (document.querySelector('#news,#welcome')) { setTimeout(prompt, 700); return; }
     if (document.getElementById('ask')) return;
@@ -121,6 +135,7 @@ export function prompt() {
 }
 
 export const actions = {
+    pushsound: () => ses.play(),
     pushlevel: (v, root) => { level = v; paint(root); },
     pushon: async (v, root) => { await subscribe(level); paint(root); },
     pushtest: async () => {
