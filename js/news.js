@@ -4,6 +4,15 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 36, date: '27.11.2026', title: 'Her yerde meralar',
+        items: [
+            'Uygulama açılınca konumunuz alınır ve çevrenizdeki kıyı meraları gösterilir.',
+            'Yalnız Biga değil: gittiğiniz her bölgede yer adı, ada uyarısı ve dip bilgisi aranır.',
+            'Denizden uzaktaysanız en yakın kıyı gösterilir. Konum izni sorulunca izin verin.',
+            'Yeni bir bölgede ilk açılış internet hızına göre bir iki dakika sürebilir.'
+        ]
+    },
+    {
         v: 35, date: '27.11.2026', title: 'Yakın yer adı',
         items: [
             'Meraların yanında en yakın yerleşimin adı ve kuş uçuşu uzaklığı yazıyor.'

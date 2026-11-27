@@ -5,6 +5,7 @@ import * as explore from './explore.js';
 import * as extras from '../extras.js';
 import * as guide from '../guide.js';
 import { islandWarning, nearLine } from '../places.js';
+import { cacheGet } from '../store.js';
 import { dipLine } from '../dip.js';
 import { app, $, esc, uid, toast, locate, persist, mapsUrl, mapTabs, pill } from '../ui.js';
 
@@ -124,7 +125,11 @@ export async function render(root, params = {}) {
         else if (params.pick && app.draft.lat !== null) map.setView([app.draft.lat, app.draft.lon], 12);
         else if (params.spots) { const one = params.spots[params.show]; if (one) map.setView([one.lat, one.lon], 15); else map.fitBounds(params.spots.map(s => [s.lat, s.lon])); }
         else if (params.area) map.setView([params.area.lat, params.area.lon], 11);
-        else if (last && !moved) map.fitBounds(last.slice(0, 8).map(s => [s.lat, s.lon]), { maxZoom: 13 });
+        else if (!moved) cacheGet('area').then(home => {
+            // Son tarama bu bolgedeyse noktalari, degilse bulunulan bolge gosterilir.
+            if (last && (!home || map.distance([home.lat, home.lon], [last[0].lat, last[0].lon]) < 60000)) map.fitBounds(last.slice(0, 8).map(s => [s.lat, s.lon]), { maxZoom: 13 });
+            else if (home) map.setView([home.lat, home.lon], 11);
+        });
     }, 80);
 }
 

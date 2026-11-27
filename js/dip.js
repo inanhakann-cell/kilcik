@@ -15,11 +15,21 @@ export function sedimentKind(text) {
     return hit ? { name: hit[1], bonus: hit[2] } : null;
 }
 
-let data = null, loading = null;
+let loading = null;
+const packs = [];   // ilk sirada uygulamayla gelen Biga verisi, sonra indirilen bolgeler
 export function loadDip() {
-    loading ||= getJson('data/biga-dip.json').then(d => { data = d; return d; }).catch(() => { loading = null; return null; });
+    loading ||= getJson('data/biga-dip.json').then(d => { packs.unshift({ ...d, bundled: true }); return d; }).catch(() => { loading = null; return null; });
     return loading;
 }
+export const addDip = d => { packs.push(d); };
+
+/** Noktayi kapsayan paket: Biga verisi onceliklidir, degilse merkezi en yakin bolge. */
+export function covering(list, lat, lon) {
+    const inside = list.filter(d => lat >= d.box[0] && lat <= d.box[2] && lon >= d.box[1] && lon <= d.box[3]);
+    const off = d => Math.abs((d.box[0] + d.box[2]) / 2 - lat) + Math.abs((d.box[1] + d.box[3]) / 2 - lon);
+    return inside.find(d => d.bundled) || inside.sort((a, b) => off(a) - off(b))[0] || null;
+}
+const dataFor = (lat, lon) => covering(packs, lat, lon);
 
 const inRing = (ring, lat, lon) => ring.reduce((inside, [aLat, aLon], i) => {
     const [bLat, bLon] = ring[(i + ring.length - 1) % ring.length];
@@ -65,16 +75,17 @@ export function offshoreAt(d, lat, lon) {
 
 /** Puanlamada kullanilan dip: once kiyida gorulen yapi; yoksa null (cagiran diger kaynaklara bakar). */
 export function shoreBottom(lat, lon) {
-    const s = data && shoreAt(data, lat, lon);
+    const data = dataFor(lat, lon), s = data && shoreAt(data, lat, lon);
     return s ? { name: s.name, bonus: s.bonus, scale: `kıyıda ${s.label}, OpenStreetMap` } : null;
 }
 export function sedimentBottom(lat, lon) {
-    const s = data && offshoreAt(data, lat, lon);
+    const data = dataFor(lat, lon), s = data && offshoreAt(data, lat, lon);
     return s ? { name: s.name, bonus: s.bonus, scale: '1:100.000 örnekleme haritası' } : null;
 }
 
 /** Ekranlarda gosterilen tek satir; veri yoksa bos. */
 export function dipText(lat, lon) {
+    const data = dataFor(lat, lon);
     if (!data) return '';
     const shore = shoreAt(data, lat, lon), sea = offshoreAt(data, lat, lon);
     return [shore && `kıyı ${shore.label}`, sea && `açıkta ${sea.name}`].filter(Boolean).join(' · ');

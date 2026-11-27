@@ -1,6 +1,6 @@
 // Telefonda noktaya yuruyerek ulasma: canli mesafe ve yon. Ekran acik tutulur.
 import { esc, toast, mapsUrl } from './ui.js';
-import { landOf, islandWarning, nearLine, ISLAND_TEXT } from './places.js';
+import { seaBetween, loadRegion, islandWarning, nearLine, ISLAND_TEXT } from './places.js';
 
 const NAMES = ['Kuzey', 'Kuzeydoğu', 'Doğu', 'Güneydoğu', 'Güney', 'Güneybatı', 'Batı', 'Kuzeybatı'];
 const rad = d => d * Math.PI / 180;
@@ -26,6 +26,7 @@ export function open(lat, lon, name) {
     if (!navigator.geolocation) return toast('Bu cihazda konum desteklenmiyor.', 'bad');
     close();
     const target = { lat, lon };
+    loadRegion(lat, lon, true).catch(() => {});
     box = document.createElement('div');
     box.id = 'guide';
     box.setAttribute('role', 'dialog');
@@ -43,11 +44,10 @@ export function open(lat, lon, name) {
         const here = { lat: p.coords.latitude, lon: p.coords.longitude };
         const c = course(here, target);
         // Arada deniz varsa yol tarifi calismaz: uyar ve noktayi yalnizca haritada ac.
-        const from = landOf(here.lat, here.lon), to = landOf(lat, lon);
-        // Kapsam disindaki konum (or. Canakkale merkez) anakara sayilir.
-        if (to !== undefined) {
-            const apart = to !== (from ?? null);
-            const text = to ? ISLAND_TEXT : 'Arada deniz var: bu noktaya feribot veya tekne gerekir.';
+        const way = seaBetween(here, target);
+        if (way) {
+            const apart = way.apart;
+            const text = way.island ? ISLAND_TEXT : 'Arada deniz var: bu noktaya feribot veya tekne gerekir.';
             box.querySelector('.sea').innerHTML = apart ? `<p class="warn">${text}</p>` : '';
             const route = box.querySelector('.route');
             route.href = apart ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : mapsUrl(lat, lon);

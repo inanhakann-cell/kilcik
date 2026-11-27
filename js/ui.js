@@ -45,12 +45,12 @@ export async function copy(text, done) {
     }
 }
 
-export const locate = () => new Promise((resolve, reject) => {
+export const locate = (options = {}) => new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error('Bu cihazda konum desteklenmiyor.'));
     navigator.geolocation.getCurrentPosition(
         p => resolve({ lat: Number(p.coords.latitude.toFixed(5)), lon: Number(p.coords.longitude.toFixed(5)), accuracy: Math.round(p.coords.accuracy) }),
         () => reject(new Error('Konum alınamadı. Konum iznini kontrol edin.')),
-        { enableHighAccuracy: true, timeout: 12000 });
+        { enableHighAccuracy: true, timeout: 12000, ...options });
 });
 
 export async function persist() {

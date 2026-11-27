@@ -114,6 +114,8 @@ try {
     net();
     // Ada uyarilari ekran cizilmeden hazir olsun (uygulamayla gelen dosya).
     await Promise.all([loadLands().catch(() => {}), loadDip()]);
+    // Daha once kullanilan cihazda acilista konum okunur (yeni kullaniciya karsilama ekrani sorar).
+    if (returning) today.followLocation();
     app.go('bugun');
     // Ana ekran simgesine basili tutunca acilan kisayollar
     const start = new URLSearchParams(location.search).get('git');

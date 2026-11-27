@@ -3,7 +3,7 @@ import * as C from '../core.js';
 import * as api from '../api.js';
 import { loadGrid, findSpots, coastSpots, describe } from '../seabed.js';
 import { depthProfile, habitat, describePlace, coastalOnly, evaluate } from '../region.js';
-import { humanPoints, restrictedAreas, nearRestricted, seenNearby, observations, placeName, coastline, bundled, distanceKm, islandWarning } from '../places.js';
+import { humanPoints, restrictedAreas, nearRestricted, seenNearby, observations, placeName, coastline, loadRegion, landPack, distanceKm, islandWarning } from '../places.js';
 import { datesOf } from '../planner.js';
 import { PEAK } from '../activity.js';
 import { SPECIES } from '../species.js';
@@ -12,7 +12,7 @@ import { cacheGet, cacheSet } from '../store.js';
 import * as guide from '../guide.js';
 import { dipLine } from '../dip.js';
 import * as extras from '../extras.js';
-import { app, $, esc, chips, toast, uid, persist, download, copy, mapsUrl, mapTabs, pill, grade, opened as openFolds, fold, SAFETY } from '../ui.js';
+import { app, $, esc, chips, toast, locate, uid, persist, download, copy, mapsUrl, mapTabs, pill, grade, opened as openFolds, fold, SAFETY } from '../ui.js';
 
 const opts = { radius: 35, day: 0, mode: 'kiyi', quiet: false, sort: 'puan', islands: false };
 // Biga ve cevresinin tum anakara kiyisi bu merkez ve yaricapla kapsanir.
@@ -52,6 +52,8 @@ async function run() {
     const at = area;
     result = null;
     try {
+        say('Bölgenin kıyı, yer adı ve dip bilgisi alınıyor…');
+        await loadRegion(at.lat, at.lon).catch(() => {});
         say('Bölgenin derinlik haritası indiriliyor (büyük alanlarda 1 dakika sürebilir)…');
         const grid = await loadGrid(at.lat, at.lon, opts.radius * 1000);
         say('Kıyı boyunca dip yapısı inceleniyor…');
@@ -70,13 +72,13 @@ async function run() {
         const found = candidates
             .filter(s => C.markNear(app.state.marks, s.lat, s.lon)?.verdict !== 'ulasilmaz');
         if (!found.length) throw new Error('Bu yarıçapta uygun kıyı bulunamadı. Yarıçapı büyütün veya kıyıya yakın bir yer seçin.');
-        // Biga cevresinde yer adlari uygulamayla gelir; harita sunucusu dolu olsa da gorunur.
-        const local = await bundled(at.lat, at.lon, opts.radius);
-        const names = local ? coastalOnly(grid, local.settlements.map(([name, lat, lon]) => ({ name, lat, lon }))) : [];
+        // Eldeki bolge verisindeki yer adlari, harita sunucusu dolu olsa da gorunur.
+        const local = landPack(at.lat, at.lon);
+        const names = local ? coastalOnly(grid, local.villages.map(([name, lat, lon]) => ({ name, lat, lon }))) : [];
         found.forEach(s => {
             const p = s.stand || s;
             s.profile = depthProfile(grid, s); s.near = []; s.quiet = null;
-            s.place = describePlace(names, p.lat, p.lon);
+            s.place = landPack(p.lat, p.lon) === local ? describePlace(names, p.lat, p.lon) : '';
         });
         const month = new Date().getMonth() + 1;
         const seen = await seenNearby(at.lat, at.lon, month).catch(() => ({}));
@@ -217,12 +219,13 @@ function draw(root) {
     const busy = status.endsWith('…');
     root.innerHTML = `${mapTabs('kesif')}
     <section class="card hero"><p><b>${esc(area?.name || '…')}</b></p>
-        <button class="btn primary big" data-act="biga" ${busy ? 'disabled' : ''}>⌖ Biga ve çevresi: tüm kıyı</button>
+        <button class="btn primary big" data-act="near" ${busy ? 'disabled' : ''}>⌖ Bulunduğum yer: çevre kıyılar</button>
         ${fold('ayar', 'Başka bölge ve ayarlar', `<div class="row wrap">${chips('day', [['0', 'Bugün'], ['1', 'Yarın']], String(opts.day))}${chips('mode', [['kiyi', 'Kıyıdan'], ['tekne', 'Tekneden']], opts.mode)}</div>
         <form class="row search" data-form="explore"><input name="q" placeholder="Başka bölge ara" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button></form><div class="chips">${places}</div>
         <p class="mute">Arama yarıçapı</p>${chips('radius', [['5', '5 km'], ['15', '15 km'], ['25', '25 km'], ['35', '35 km'], ['45', '45 km']], String(opts.radius))}
         <label class="check"><input type="checkbox" data-field="islands" ${opts.islands ? 'checked' : ''}> Adaları ve karşı kıyıyı da tara</label>
-        <button class="btn big" data-act="run" ${busy ? 'disabled' : ''}>Seçili bölgede meraları bul</button>`, folds, 'sub')}
+        <button class="btn big" data-act="run" ${busy ? 'disabled' : ''}>Seçili bölgede meraları bul</button>
+        <button class="btn big" data-act="biga" ${busy ? 'disabled' : ''}>Biga ve çevresi: tüm kıyı</button>`, folds, 'sub')}
         <p class="${busy ? 'mute' : 'bad'}" role="status">${esc(status)}</p></section>
     ${result ? `<p><b>${esc(result.area.name)}: ${result.spots.length} nokta</b> <span class="mute">${new Date(result.at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${result.day ? ' · yarın için' : ''}</span></p>
         ${fold('suz', 'Süz ve dışa aktar', `${chips('sort', [['puan', 'En iyiler önce'], ['sira', 'Kıyı sırası (batıdan doğuya)'], ['yakin', 'Yakına göre']], opts.sort)}
@@ -268,6 +271,18 @@ export async function render(root, params = {}) {
 
 const pick = v => result.spots[Number(v)];
 export const actions = {
+    near: async () => {
+        token++; result = null; places = ''; status = 'Konumunuz alınıyor…'; paint();
+        try {
+            const p = await locate();
+            const hub = await api.searchHub(p.lat, p.lon);
+            if (hub.none) throw new Error('160 km içinde deniz kıyısı bulunamadı.');
+            area = { lat: hub.lat, lon: hub.lon, name: hub.far ? `En yakın kıyı (~${hub.far} km)` : 'Bulunduğum yer' };
+            Object.assign(opts, { radius: 25, mode: 'kiyi', islands: false, sort: 'puan' });
+            loadPhotos();
+            run();
+        } catch (err) { status = err.message; paint(); }
+    },
     run: () => run(),
     biga: async () => {
         area = { ...BIGA_COAST };

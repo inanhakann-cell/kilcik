@@ -105,6 +105,28 @@ export async function shoreInfo(lat, lon) {
     return info;
 }
 
+/** Konuma en yakin deniz noktasi (yukseklik modelinde 0 m): { lat, lon, km }; 160 km icinde yoksa null. */
+export async function nearestSea(lat, lon) {
+    const key = `sea:${lat.toFixed(2)},${lon.toFixed(2)}`;
+    const cached = await cacheGet(key);
+    if (cached) return cached.sea;
+    let sea = null;
+    for (const rings of [[0, 3, 6, 10, 15, 20], [28, 38, 50, 65, 80, 100], [120, 140, 160]]) {
+        const pts = rings.flatMap(km => (km ? Array.from({ length: 16 }, (_, i) => [...offsetPoint(lat, lon, i * 22.5, km * 1000), km]) : [[lat, lon, 0]]));
+        const r = await getJson(`https://api.open-meteo.com/v1/elevation?latitude=${pts.map(p => p[0].toFixed(4))}&longitude=${pts.map(p => p[1].toFixed(4))}`);
+        const i = r.elevation.findIndex(e => e <= 0);
+        if (i >= 0) { sea = { lat: Number(pts[i][0].toFixed(4)), lon: Number(pts[i][1].toFixed(4)), km: pts[i][2] }; break; }
+    }
+    await cacheSet(key, { sea });
+    return sea;
+}
+
+/** Mera aramasinin merkezi: deniz yakinsa konumun kendisi, uzaksa en yakin kiyi. */
+export async function searchHub(lat, lon) {
+    const sea = await nearestSea(lat, lon).catch(() => undefined);
+    return sea && sea.km > 10 ? { lat: sea.lat, lon: sea.lon, far: sea.km } : { lat, lon, none: sea === null };
+}
+
 /** Cevredeki (~15 km) deniz sicakligi farki. */
 export async function sstFront(lat, lon) {
     const pts = [0, 90, 180, 270].map(b => offsetPoint(lat, lon, b, 15000));
