@@ -8,7 +8,7 @@ import { app, $, esc, uid, options, toast, download, persist, mapsUrl, locate, c
 import { scanSpots, icsFile } from '../planner.js';
 import { getAi, setAi } from '../ai.js';
 import { askPermission, check } from '../alerts.js';
-import { cachedPlaces, islandWarning } from '../places.js';
+import { cachedPlaces, islandWarning, nearLine } from '../places.js';
 import { cacheGet, cacheSet } from '../store.js';
 
 const empty = text => `<section class="card"><p class="mute">${text}</p></section>`;
@@ -32,7 +32,7 @@ export const spots = {
         <button class="btn" data-act="samples">Biga–Bozcaada örnekleri</button></div>
         <div id="scan">${scanHtml()}</div>
         ${app.state.spots.map(s => `<section class="card"><div class="row between"><h2>${esc(s.name)}</h2><span class="pill mute" id="sc-${s.id}">${s.water === 'tatli' ? 'Tatlı su' : 'Deniz'}</span></div>
-            <p class="mono">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</p>${s.note ? `<p>${esc(s.note)}</p>` : ''}${islandWarning(s.lat, s.lon)}${dipLine(s.lat, s.lon)}
+            <p class="mono">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</p>${s.note ? `<p>${esc(s.note)}</p>` : ''}${nearLine(s.lat, s.lon)}${islandWarning(s.lat, s.lon)}${dipLine(s.lat, s.lon)}
             <div class="row wrap"><button class="btn primary" data-act="plan" data-v="${s.id}">Planla</button><button class="btn" data-act="show" data-v="${s.id}">Haritada</button>
             <a class="btn" href="${mapsUrl(s.lat, s.lon)}" target="_blank" rel="noopener">Yol tarifi</a>${guide.button(s.lat, s.lon, s.name)}<button class="btn" data-act="edit" data-v="${s.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${s.id}">Sil</button>${extras.shareButton(s.lat, s.lon, s.name)}</div>${extras.floorChips(s.lat, s.lon)}</section>`).join('')
         || empty('Henüz kayıtlı noktanız yok. Haritadan bir nokta seçip kaydedin.')}`;

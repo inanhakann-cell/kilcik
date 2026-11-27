@@ -1,6 +1,6 @@
 // Telefonda noktaya yuruyerek ulasma: canli mesafe ve yon. Ekran acik tutulur.
 import { esc, toast, mapsUrl } from './ui.js';
-import { landOf, islandWarning, ISLAND_TEXT } from './places.js';
+import { landOf, islandWarning, nearLine, ISLAND_TEXT } from './places.js';
 
 const NAMES = ['Kuzey', 'Kuzeydoğu', 'Doğu', 'Güneydoğu', 'Güney', 'Güneybatı', 'Batı', 'Kuzeybatı'];
 const rad = d => d * Math.PI / 180;
@@ -30,7 +30,7 @@ export function open(lat, lon, name) {
     box.id = 'guide';
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-label', 'Noktaya yönlendirme');
-    box.innerHTML = `<p class="mute">Noktaya yönlendirme</p><h1>${esc(name || 'Seçilen nokta')}</h1><p class="mono">${lat.toFixed(5)}, ${lon.toFixed(5)}</p>
+    box.innerHTML = `<p class="mute">Noktaya yönlendirme</p><h1>${esc(name || 'Seçilen nokta')}</h1><p class="mono">${lat.toFixed(5)}, ${lon.toFixed(5)}</p>${nearLine(lat, lon)}
         <div class="needle" hidden>↑</div><p class="far">Konum aranıyor…</p><p class="way"></p><p class="mute acc"></p>
         <div class="sea">${islandWarning(lat, lon)}</div>
         <p class="warn">Kuş uçuşu yöndür; yol, kayalık, özel mülk ve yasak alanları göstermez.</p>

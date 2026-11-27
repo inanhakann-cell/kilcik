@@ -2,6 +2,7 @@
 import { getJson, shoreInfo } from './api.js';
 import { cacheGet, cacheSet } from './store.js';
 import { LATIN } from './species.js';
+import { esc } from './ui.js';
 import { landmasses, islandAt, sameLand } from './islands.js';
 
 // Ucretsiz sunucular sik sik dolu olur; ilk yanit veren kullanilir.
@@ -98,7 +99,7 @@ export async function bundled(lat, lon, km) {
     return lat - dLat >= south && lat + dLat <= north && lon - dLon >= west && lon + dLon <= east ? data : null;
 }
 
-let lands = null, box = null;
+let lands = null, box = null, villages = [];
 /** Uygulamayla gelen kiyi cizgisinden ada bilgisini bir kez hazirlar. */
 export async function loadLands() {
     if (lands) return;
@@ -106,6 +107,7 @@ export async function loadLands() {
     const data = await bundle;
     if (!data) return;
     box = data.box;
+    villages = data.settlements;
     lands = landmasses(data.ways.map(w => w.map(([lat, lon]) => ({ lat, lon }))));
 }
 
@@ -117,6 +119,24 @@ export function landOf(lat, lon) {
 
 export const ISLAND_TEXT = 'Adada: karayoluyla gidilemez, feribot veya tekne gerekir.';
 export const islandWarning = (lat, lon) => (landOf(lat, lon) > 0 ? `<p class="warn">${ISLAND_TEXT}</p>` : '');
+
+/** Noktaya en yakin yerlesimler (kus ucusu, ayni kara parcasinda): "Karabiga 8.2 km". */
+export function nearNames(lat, lon, count = 2) {
+    const land = landOf(lat, lon);
+    if (land === undefined) return [];
+    const sorted = villages.map(([name, a, b]) => ({ name, a, b, km: distanceKm(lat, lon, a, b) })).filter(v => v.km <= 15).sort((x, y) => x.km - y.km);
+    const out = [];
+    for (const v of sorted) {
+        // Cok yakin bir yerlesim varsa ikincisi gerekmez.
+        if (out.length >= count || (out.length && out[0].km < 1.5)) break;
+        if (!out.some(o => o.name === v.name) && landOf(v.a, v.b) === land) out.push(v);
+    }
+    return out.map(v => ({ name: v.name, km: v.km, text: `${v.name} ${v.km.toFixed(1)} km` }));
+}
+export const nearLine = (lat, lon) => {
+    const near = nearNames(lat, lon);
+    return near.length ? `<p class="near">Yakın yer: <b>${near.map(v => esc(v.text)).join(' · ')}</b></p>` : '';
+};
 
 /** Merkezden karayla ulasilamayan ada noktalarini eler (veri kapsami icinde). */
 export async function onSameLand(center, list) {

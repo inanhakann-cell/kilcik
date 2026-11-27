@@ -3,7 +3,7 @@ import * as C from '../core.js';
 import * as api from '../api.js';
 import { contextFor, planFor, datesOf } from '../planner.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
-import { findPlaces, cachedPlaces, coastPlaces, onSameLand, seenNearby, distanceKm } from '../places.js';
+import { findPlaces, cachedPlaces, coastPlaces, onSameLand, seenNearby, distanceKm, nearNames, nearLine } from '../places.js';
 import { SPECIES, SAMPLE_SPOTS } from '../species.js';
 import { ruleFor, inClosedSeason, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
@@ -163,6 +163,7 @@ function hero(item, open) {
     const reason = [...factors.slice(0, 3).map(f => ['ok', '✓', f.text]), ...factors.slice(-2).filter(f => f.points / f.max < 0.6).map(f => ['warn', '△', f.text])];
     const floor = extras.floorText(p.lat, p.lon);
     return `<section class="card hero"><p class="verdict ${cls}">${day ? 'Yarın' : 'Bugün'}: ${word}</p><h1>${esc(p.name)}</h1>
+        ${nearLine(p.lat, p.lon)}
         <p class="mute">${p.km.toFixed(1)} km · şans: <b class="${grade(plan.score)[1]}">${grade(plan.score)[0]}</b>${floor ? ` · dip: ${esc(floor)}` : ''}</p>
         ${best ? `<p class="best"><span class="when">${span(best.from, best.to)}</span>${target ? `<span class="mute">${esc(target.name)} için en iyi saat</span>` : ''}</p>` : `<p class="bad">${plan.allUnsafe ? 'Güvenli saat yok.' : 'Bugün için saat kalmadı; Yarın’a bakın.'}</p>`}
         ${wanted() && !target ? `<p class="warn">${esc(wanted())} bu gün için uygun görünmüyor.</p>` : ''}
@@ -183,7 +184,8 @@ function placeRow(item, open) {
     const w = plan.windows[0];
     const [word, cls] = verdictOf(item);
     const best = fish.find(f => !f.closed);
-    return `<details class="card place" data-keep="${esc(p.id)}"${open.has(p.id) ? ' open' : ''}><summary><span><b>${esc(p.name)}</b><small>${p.km.toFixed(1)} km · ${w ? span(w.from, w.to) : 'saat yok'}${best ? ` · ${esc(best.name)}` : ''}</small></span>${pill(plan.score)}</summary>
+    const near = nearNames(p.lat, p.lon, 1)[0];
+    return `<details class="card place" data-keep="${esc(p.id)}"${open.has(p.id) ? ' open' : ''}><summary><span><b>${esc(p.name)}</b>${near ? `<small>Yakını: ${esc(near.text)}</small>` : ''}<small>${p.km.toFixed(1)} km · ${w ? span(w.from, w.to) : 'saat yok'}${best ? ` · ${esc(best.name)}` : ''}</small></span>${pill(plan.score)}</summary>
         <p class="${cls}">${word}${w?.peak.safety.reasons.length ? ` — ${esc(w.peak.safety.reasons.join(' '))}` : ''}</p>${strip(plan)}${fish.slice(0, 3).map(fishRow).join('')}
         <div class="row wrap"><button type="button" class="btn primary" data-guide="${p.lat},${p.lon}" data-name="${esc(p.name)}">Beni götür</button>${actionsFor(p)}</div></details>`;
 }

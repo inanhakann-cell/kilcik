@@ -4,6 +4,12 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 35, date: '27.11.2026', title: 'Yakın yer adı',
+        items: [
+            'Meraların yanında en yakın yerleşimin adı ve kuş uçuşu uzaklığı yazıyor.'
+        ]
+    },
+    {
         v: 34, date: '27.11.2026', title: 'Dip bilgisi',
         items: [
             'Bugün, mera kartları, harita ve noktalarınızda yaklaşık dip bilgisi görünüyor.',
