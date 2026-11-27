@@ -9,6 +9,7 @@ import { shareCard } from '../share.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
 import { seenNearby, islandWarning } from '../places.js';
 import * as extras from '../extras.js';
+import * as nobet from '../nobet.js';
 import { app, $, esc, uid, show, wind, options, chips, toast, download, copy, locate, persist, mapsUrl, grade, pill, opened, fold, SAFETY, windPaint } from '../ui.js';
 
 let result = null;
@@ -168,6 +169,7 @@ function renderResult(root) {
         <button type="button" class="btn primary big" data-guide="${d.lat},${d.lon}" data-name="${esc(d.name || 'Plan noktası')}">Beni oraya götür</button>
         <div class="row wrap"><button class="btn" data-act="save">Planı kaydet</button><button class="btn" data-act="remind" ${plan.windows.length ? '' : 'disabled'}>Takvime hatırlatma</button>${extras.shareButton(d.lat, d.lon, d.name || 'Mera')}</div>
         <p class="mute">Puan ${plan.score ?? '--'}/100 · ${esc(technique.ad)}${setup ? ` · ${esc(setup.name)}` : ''} · <span id="confidence">tahmin güveni ${plan.confidence}</span></p></section>
+    ${ctx.salt ? nobet.card(pack, d.date, plan.windows[0]) : ''}
     <section class="card"><h2>Hangi balık, saat kaçta?</h2><div id="activity">${activityHtml(3)}</div></section>
     <section class="card"><h2>14 gün</h2><div class="week">${week.map(({ date, p }) => `<button data-act="day" data-v="${date}" class="${date === d.date ? 'on' : ''}"><small>${esc(dayName(date))}</small><b class="${p.allUnsafe ? 'bad' : grade(p.score)[1]}">${p.allUnsafe ? '!' : p.score ?? '--'}</b></button>`).join('')}</div><p class="mute">! güvenli saat yok. İleri günlerin tahmin güveni düşer.</p></section>
     ${fold('pencere', 'Atış saatleri ve yorum', `${plan.windows.map((w, n) => `<button class="window" data-act="hour" data-v="${w.peak.row.time}"><b>${n + 1}. ${span(w)}</b>${pill(w.score)}<small>${esc([...w.peak.factors].sort((a, b) => b.points / b.max - a.points / a.max).slice(0, 2).map(f => f.text).join(' · '))}</small></button>`).join('') || '<p>Bu gün için uygun pencere yok.</p>'}
@@ -270,6 +272,12 @@ function calendar() {
 }
 
 export const actions = {
+    nobetkur: async (v, root) => {
+        const { d, pack } = result;
+        await nobet.start({ pack, lat: d.lat, lon: d.lon, name: d.name || 'Plan noktası', date: d.date }, root);
+        if (result) renderResult(root);
+    },
+    nobetsil: async (v, root) => { await nobet.stop(); if (result) renderResult(root); },
     water: (v, root) => { Object.assign(app.draft, { water: v, species: '' }); render(root); },
     technique: (v, root) => { app.draft.technique = v; render(root); },
     here: async (v, root) => {

@@ -5,7 +5,7 @@ import { contextFor, solunarFor, moonFor } from './planner.js';
 import { SPECIES } from './species.js';
 import { catchWarnings } from './legal.js';
 import { cacheGet, cacheSet } from './store.js';
-import { app, esc, uid, toast, locate, persist } from './ui.js';
+import { app, esc, uid, toast, copy, locate, persist } from './ui.js';
 
 let current = null;
 let loaded = false;
@@ -56,12 +56,44 @@ async function record(fields, at) {
     return true;
 }
 
+/** Yakina gonderilecek "su saatte donerim" metni. */
+export function returnText(place, time, now = new Date()) {
+    const tomorrow = time <= now.toTimeString().slice(0, 5);
+    return `Kıyıda balık avındayım. Dönüş saatim: ${tomorrow ? 'yarın ' : ''}${time}.\nKonumum: https://www.google.com/maps/search/?api=1&query=${place.lat.toFixed(5)},${place.lon.toFixed(5)}\nO saatten sonra benden haber alamazsan beni ara.`;
+}
+
+export const returnBox = () => `<details class="donus"><summary>Yakınıma dönüş saatimi gönder</summary>
+    <label>Dönüş saatim<input type="time" name="donus" value="${new Date(Date.now() + 3 * 3600000).toTimeString().slice(0, 2)}:00" required></label>
+    <button type="button" class="btn big" data-act="sesshare">Konumumla gönder</button>
+    <p class="mute">Telefonun paylaşma ekranı açılır; kişiyi siz seçip gönderirsiniz. Dönmezseniz kendiliğinden haber gitmez.</p></details>`;
+
+// Konum beklenirken telefon paylasma iznini dusurebilir; hazir mesaj ikinci dokunusta gonderilir.
+let ready = null;
+async function shareReturn() {
+    const box = document.querySelector('.view:not([hidden]) .donus');
+    const time = box?.querySelector('[name=donus]').value;
+    if (!time) return toast('Dönüş saatini seçin.', 'bad');
+    let text = ready && ready.time === time && Date.now() - ready.at < 120000 ? ready.text : '';
+    if (!text) {
+        try { text = returnText(current || await locate(), time); }
+        catch (err) { return toast(err.message, 'bad'); }
+    }
+    if (!navigator.share) return copy(text, 'Mesaj kopyalandı. Yakınınıza yapıştırıp gönderin.');
+    try { await navigator.share({ text }); ready = null; }
+    catch (err) {
+        if (err.name === 'AbortError') return;
+        if (err.name !== 'NotAllowedError') return copy(text, 'Mesaj kopyalandı. Yakınınıza yapıştırıp gönderin.');
+        ready = { text, time, at: Date.now() };
+        box.querySelector('[data-act=sesshare]').textContent = 'Konum hazır: şimdi gönder';
+    }
+}
+
 export function card() {
     if (!loaded) return '';
     const learn = C.calibrate(app.state.catches);
     const progress = learn.ready ? 'Tahmin ağırlıkları kayıtlarınıza göre ayarlanıyor.' : `Tahminin öğrenmesi için: avlı ${Math.min(learn.good, learn.min)}/${learn.min}, boş ${Math.min(learn.blank, learn.min)}/${learn.min}.`;
     if (!current) {
-        return `<section class="card session"><button class="btn primary big" data-act="sesstart">● Ava başladım</button><p class="mute">Konum ve saat otomatik kaydedilir. ${progress}</p></section>`;
+        return `<section class="card session"><button class="btn primary big" data-act="sesstart">● Ava başladım</button><p class="mute">Konum ve saat otomatik kaydedilir. ${progress}</p>${returnBox()}</section>`;
     }
     const minutes = Math.max(0, Math.round((Date.now() - current.start) / 60000));
     return `<section class="card session on"><h2>● Av sürüyor · ${Math.floor(minutes / 60)} sa ${minutes % 60} dk</h2>
@@ -69,7 +101,7 @@ export function card() {
         <form data-form="session"><div class="grid2"><label>Tür<input name="species" list="ses-species" required maxlength="80"></label><label>Boy (cm)<input type="number" name="size" min="0" step="0.5"></label></div>
         <label>Yem / sahte<input name="lure" maxlength="120"></label><label class="check"><input type="checkbox" name="released"> Geri bıraktım</label><button class="btn primary big">Balık tuttum</button></form>
         <datalist id="ses-species">${SPECIES.map(s => `<option value="${esc(s.ad)}">`).join('')}</datalist>
-        <div class="row wrap"><button class="btn" data-act="sesend">Avı bitir</button><button class="btn danger" data-act="sescancel">Vazgeç</button></div></section>`;
+        <div class="row wrap"><button class="btn" data-act="sesend">Avı bitir</button><button class="btn danger" data-act="sescancel">Vazgeç</button></div>${returnBox()}</section>`;
 }
 
 export const active = () => Boolean(current);
@@ -81,6 +113,7 @@ export async function init() {
 const store = async value => { current = value; await cacheSet(KEY, value); };
 
 export const actions = refresh => ({
+    sesshare: shareReturn,
     sesstart: async () => {
         let place;
         try {

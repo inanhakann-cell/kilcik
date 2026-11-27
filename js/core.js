@@ -299,6 +299,11 @@ export function stormAhead(pack, nowMs = Date.now(), hours = 48) {
     return { from: bad[0].time, to: bad[bad.length - 1].time, wind: top('wind'), gust: top('gust'), wave: top('wave') || null, thunder: bad.some(r => r.code >= 95) };
 }
 
+/** stormAhead sonucunun sozlu parcalari. */
+export const stormParts = s => [`rüzgar ${kmh(s.wind)}`, `hamle ${kmh(s.gust)}`, s.wave >= 1.5 ? `dalga ${s.wave} m` : '', s.thunder ? 'gök gürültülü fırtına' : ''].filter(Boolean);
+/** 0: sakin, 1: sert hava, 2: gok gurultulu firtina. */
+export const stormLevel = s => (!s ? 0 : s.thunder ? 2 : 1);
+
 export const FACTOR_NAMES = { zaman: 'Günün saati', solunar: 'Solunar', basinc: 'Basınç eğilimi', ruzgar: 'Rüzgar', dalga: 'Dalga', deniz_gecmisi: 'Deniz geçmişi', gelgit: 'Su hareketi', gokyuzu: 'Gökyüzü', su_egilimi: 'Su sıcaklığı değişimi', ay: 'Ay evresi' };
 const FACTOR_KEYS = Object.keys(FACTOR_NAMES);
 export const factorRatios = factors => Object.fromEntries(factors.filter(f => FACTOR_KEYS.includes(f.key) && f.max).map(f => [f.key, Number((f.points / f.max).toFixed(2))]));

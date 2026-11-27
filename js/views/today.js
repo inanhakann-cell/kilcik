@@ -241,6 +241,7 @@ function hero(item, open) {
         ${w?.peak.safety.reasons.length ? `<p class="${cls}">${esc(w.peak.safety.reasons.join(' '))} <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi uyarılar</a></p>` : ''}
         <button type="button" class="btn primary big" data-guide="${p.lat},${p.lon}" data-name="${esc(p.name)}">Beni oraya götür</button>
         ${session.active() ? '' : '<button type="button" class="btn big" data-act="sesstart">● Ava başladım</button>'}
+        ${session.active() ? '' : session.returnBox()}
         ${fold('why', 'Ayrıntı', `<p>Puan <b>${plan.score ?? '--'}/100</b>${plan.windows[1] ? ` · ikinci saat ${span(plan.windows[1].from, plan.windows[1].to)}` : ''}${item.shoreWind ? ` · rüzgar ${item.shoreWind}` : ''}</p><p class="mono">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</p>${strip(plan)}
             ${reason.map(([c, icon, text]) => `<p class="${c}">${icon} ${esc(text)}</p>`).join('')}${fish.slice(0, 8).map(fishRow).join('')}
             <div class="row wrap">${actionsFor(p)}</div>${extras.floorChips(p.lat, p.lon)}

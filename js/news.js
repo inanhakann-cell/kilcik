@@ -4,6 +4,14 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 41, date: '27.11.2026', title: 'Güvenlik: haber ver',
+        items: [
+            '“Yakınıma dönüş saatimi gönder”: Ava başladım bölümünde saati seçin; konumunuz ve dönüş saatiniz hazır mesaj olur, kişiyi siz seçip gönderirsiniz.',
+            '“Hava bozarsa haber ver”: Av planı ekranında gideceğiniz saatleri seçin; sert rüzgar, yüksek dalga veya gök gürültüsü tahmin edilirse bildirim gelir.',
+            'Nöbet için bildirim izni gerekir; bildirim yaklaşık bir saat gecikebilir ve resmi uyarının yerine geçmez.'
+        ]
+    },
+    {
         v: 40, date: '27.11.2026', title: 'Rüzgar renkleri',
         items: [
             'Rüzgar ve hamle değerleri artık Windy’deki renklerin aynısıyla gösterilir; hız arttıkça renk değişir.',

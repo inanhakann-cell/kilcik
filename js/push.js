@@ -19,7 +19,7 @@ const soundPart = () => `<h3>Bildirim sesi: kalama (3 sn)</h3>
     <p class="mute">${ses.inApp() ? 'İşaretliyse av bildirimleri kalama sesiyle gelir.' : 'Bildirime dokununca veya uygulama açıkken bildirim gelince çalar. Uygulama kapalıyken bildirim telefonun kendi sesiyle gelir.'}</p>
     <div class="row wrap"><button type="button" class="btn" data-act="pushsound">Sesi dinle</button></div>`;
 
-const post = async (path, body) => {
+export const post = async (path, body) => {
     const res = await fetch(`${SERVER}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(out.error || `Sunucu ${res.status}`);
@@ -32,7 +32,7 @@ async function currentArea() {
 }
 
 // Bilgisayar surumu (127.0.0.1) telefon bildirimi almaz.
-const offered = () => Boolean(SERVER) && !['127.0.0.1', 'localhost'].includes(location.hostname);
+export const offered = () => Boolean(SERVER) && !['127.0.0.1', 'localhost'].includes(location.hostname);
 
 export const card = () => (offered() ? '<section class="card" id="push"></section>' : '');
 
@@ -55,7 +55,7 @@ export async function paint(root) {
         ${on ? '<button type="button" class="btn" data-act="pushtest">Deneme bildirimi gönder</button>' : ''}</div>`}
         ${on && !hint ? `<label class="check"><input type="checkbox" data-field="pushfollow" ${on.follow ? 'checked' : ''}> Bildirim bölgesi bulunduğum yeri izlesin</label>
         <p class="mute">Açıksa, uygulamayı başka bir yerde açtığınızda yeni bölgenin yaklaşık konumu sunucuya gönderilir.</p>` : ''}
-        <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider.</p>
+        <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider. “İzin verme (kapat)” fırtına nöbetini de kapatır.</p>
         ${soundPart()}`;
 }
 
@@ -92,15 +92,27 @@ export async function areaChanged(area) {
     } catch { /* sunucuya ulasilamazsa bir sonraki acilista yeniden denenir */ }
 }
 
+/** Varsa bu cihazin bildirim aboneligi. */
+export const current = async () => (await navigator.serviceWorker?.getRegistration())?.pushManager?.getSubscription();
+
+/** Izin ister ve aboneligi dondurur; olmazsa sebebiyle hata verir. */
+export async function subscription() {
+    if (iosBrowser()) throw new Error('iPhone’da bildirim için uygulamayı ana ekrana ekleyip oradan açın.');
+    if (!supported()) throw new Error('Bu tarayıcı bildirimi desteklemiyor.');
+    // iPhone izni yalnizca dokunustan hemen sonra sorulabilir.
+    if ((await Notification.requestPermission()) !== 'granted') throw new Error('Bildirim izni verilmedi.');
+    const reg = await navigator.serviceWorker.ready;
+    const old = await reg.pushManager.getSubscription();
+    if (old) return old;
+    const res = await fetch(`${SERVER}/anahtar`);
+    if (!res.ok) throw new Error('Sunucuya ulaşılamadı.');
+    const { key } = await res.json();
+    return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+}
+
 async function subscribe(wanted) {
     try {
-        // iPhone izni yalnizca dokunustan hemen sonra sorulabilir.
-        if ((await Notification.requestPermission()) !== 'granted') return toast('Bildirim izni verilmedi.', 'bad');
-        const reg = await navigator.serviceWorker.ready;
-        const res = await fetch(`${SERVER}/anahtar`);
-        if (!res.ok) throw new Error('Sunucuya ulaşılamadı.');
-        const { key } = await res.json();
-        const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+        const sub = await subscription();
         await send(sub, await currentArea(), wanted, Boolean(saved()?.follow));
         toast('Bildirimler açık.', 'ok');
         ses.ask();
@@ -149,9 +161,11 @@ export const actions = {
     pushoff: async (v, root) => {
         try {
             localStorage.setItem(ASKED, 'no');
-            const sub = await (await navigator.serviceWorker?.getRegistration())?.pushManager?.getSubscription();
+            const sub = await current();
             if (sub) { await post('/sil', { endpoint: sub.endpoint }); await sub.unsubscribe(); }
             localStorage.removeItem(KEY);
+            // Abonelik silinince firtina nobeti de kapanir.
+            localStorage.removeItem('firtina-nobeti');
             toast('Bildirim gönderilmeyecek.', 'ok');
         } catch (err) { toast(`Kapatılamadı: ${err.message}`, 'bad'); }
         paint(root);
