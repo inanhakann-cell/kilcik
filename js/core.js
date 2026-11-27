@@ -304,6 +304,24 @@ export const stormParts = s => [`rüzgar ${kmh(s.wind)}`, `hamle ${kmh(s.gust)}`
 /** 0: sakin, 1: sert hava, 2: gok gurultulu firtina. */
 export const stormLevel = s => (!s ? 0 : s.thunder ? 2 : 1);
 
+/** Arsiv suzgeci: bos birakilan olcut hepsini kabul eder. Tarih "YYYY-AA-GG..." bicimindedir. */
+export const filterCatches = (list, { species = '', month = '', year = '' } = {}, date = c => c.at, name = c => c.species) => list.filter(c =>
+    (!species || name(c) === species) && (!month || date(c).slice(5, 7) === month) && (!year || date(c).slice(0, 4) === year));
+
+/** Onceki yillarda bugune yakin gunlerde (±days) tutulan baliklar, en yakin yil once. */
+export function anniversaries(catches, now = new Date(), days = 7) {
+    const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    return catches.filter(c => {
+        if (c.blank || !c.at) return false;
+        const [y, m, d] = c.at.slice(0, 10).split('-').map(Number);
+        // Yilbasi iki yandan da yakalansin diye komsu yillar da denenir.
+        return y < now.getFullYear() && [-1, 0, 1].some(shift => {
+            const same = Date.UTC(now.getFullYear() + shift, m - 1, d);
+            return now.getFullYear() + shift > y && Math.abs(same - today) <= days * 86400000;
+        });
+    }).sort((a, b) => b.at.localeCompare(a.at));
+}
+
 export const FACTOR_NAMES = { zaman: 'Günün saati', solunar: 'Solunar', basinc: 'Basınç eğilimi', ruzgar: 'Rüzgar', dalga: 'Dalga', deniz_gecmisi: 'Deniz geçmişi', gelgit: 'Su hareketi', gokyuzu: 'Gökyüzü', su_egilimi: 'Su sıcaklığı değişimi', ay: 'Ay evresi' };
 const FACTOR_KEYS = Object.keys(FACTOR_NAMES);
 export const factorRatios = factors => Object.fromEntries(factors.filter(f => FACTOR_KEYS.includes(f.key) && f.max).map(f => [f.key, Number((f.points / f.max).toFixed(2))]));
@@ -357,6 +375,7 @@ export function sanitizeState(s) {
             return {
                 id: x.id, at: str(x.at, 16), species: str(x.species, 80), spot: str(x.spot, 80), ...(validCoord(c.lat, c.lon) ? c : { lat: null, lon: null }),
                 length: num(x.length), weight: num(x.weight, 2), count: Math.max(1, Math.round(num(x.count) || 1)), lure: str(x.lure, 120),
+                share: ['yakin', 'tam'].includes(x.share) ? x.share : '', shareId: /^[a-f0-9]{24}$/.test(x.shareId || '') ? x.shareId : '',
                 released: Boolean(x.released), note: str(x.note), conditions: str(x.conditions), blank: Boolean(x.blank), score: Number.isFinite(x.score) ? Math.max(0, Math.min(100, Math.round(x.score))) : null,
                 factors: x.factors && typeof x.factors === 'object' ? Object.fromEntries(Object.entries(x.factors).filter(([k, v]) => FACTOR_KEYS.includes(k) && isNum(v) && v >= 0 && v <= 1)) : null,
                 photo: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x.photo || '') ? x.photo : ''

@@ -4,6 +4,15 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 43, date: '27.11.2026', title: 'Av arşivi ve paylaşım',
+        items: [
+            'Günlük → “Av arşivi”: avlarınızı türe, aya ve yıla göre süzün; haritada görün, “Beni götür” ile aynı yere gidin.',
+            'Geçen yıllarda bu hafta tuttuğunuz balıklar Bugün ve Günlük ekranında hatırlatılır.',
+            'İsterseniz bir avı haritada paylaşın: kayıt formunda “Haritada paylaş” → yaklaşık yer (1 km) veya tam yer. Seçmezseniz hiçbir şey paylaşılmaz.',
+            '“Paylaşılanlar” sekmesinde çevredeki paylaşımları görün; yanlış veya uygunsuz olanı “Bildir” ile haber verin.'
+        ]
+    },
+    {
         v: 42, date: '27.11.2026', title: 'Dönmezsem haber ver',
         items: [
             'Yakınınız kendi telefonunda ☰ Menü → “Yakınım için uyarı al” bölümünden bir kod oluşturup size göndersin.',

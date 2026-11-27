@@ -13,6 +13,8 @@ import { contextFor, solunarFor } from '../planner.js';
 import * as session from '../session.js';
 import * as donus from '../donus.js';
 import { hourFactors } from '../session.js';
+import * as paylasim from '../paylasim.js';
+import { memoryCard } from './archive.js';
 
 let place = { lat: null, lon: null, spot: '' };
 let editing = null;
@@ -56,6 +58,7 @@ export function render(root, params = {}) {
     }, new Map())];
     const open = opened(root);
     if (editing) open.add('detay');
+    if (editing && app.state.catches.find(c => c.id === editing)?.share) open.add('paylas');
     const blank = mode === 'blank';
     const form = !mode ? '' : `
     <form class="card hero" data-form="catch"><h2>${editing ? 'Avı düzenle' : blank ? 'Boş döndüm' : 'Balık tuttum'}</h2>
@@ -63,6 +66,9 @@ export function render(root, params = {}) {
         <label>Tür<input name="species" list="species" maxlength="80" placeholder="Yukarıdan seçin veya yazın"></label>
         <label>Fotoğraf (isteğe bağlı)<input type="file" name="photo" accept="image/*"></label>`}
         <p class="mono">${place.lat === null ? (locating ? 'Konum alınıyor…' : 'Konum yok: aşağıdan seçin.') : `Konum: ${esc(place.spot)} ${place.lat.toFixed(4)}, ${place.lon.toFixed(4)}`}</p>
+        ${blank || !ortak.offered() ? '' : fold('paylas', 'Haritada paylaş (isteğe bağlı)', `<label>Bu avı herkes görsün mü?<select name="share">${options(paylasim.MODES, '')}</select></label>
+        <label>Görünecek ad (boş bırakılabilir)<input name="sharename" maxlength="20" value="${esc(paylasim.myName())}"></label>
+        <p class="mute">Paylaşırsanız herkes tür, tarih, günün bölümü, boy ve seçtiğiniz yeri görür (400 gün). Fotoğraf, yem ve notunuz gitmez. Tam yer seçerseniz meranız belli olur. Seçimi kaldırınca veya avı silince haritadan kalkar.</p>`, open, 'sub')}
         <div class="row wrap"><button class="btn primary">Kaydet</button><button type="button" class="btn" data-act="cancel">Vazgeç</button></div>
         ${fold('detay', blank ? 'Saat, yer ve not' : 'Boy, yem, saat, yer ve not', `<div class="grid2">
         <label>Tarih ve saat<input type="datetime-local" name="at" required value="${nowLocal()}" max="${nowLocal()}"></label>
@@ -82,6 +88,7 @@ export function render(root, params = {}) {
     root.innerHTML = `
     ${donus.tripCard()}
     ${session.active() ? session.card() : ''}
+    ${mode ? '' : `<button type="button" class="btn big" data-nav="arsiv">🗺 Av arşivi ve paylaşılanlar</button>${memoryCard()}`}
     ${mode ? form : `<button type="button" class="btn primary huge" data-act="new" data-v="fish">🎣 Balık tuttum</button><button type="button" class="btn huge" data-act="new" data-v="blank">Boş döndüm</button>
     <p class="mute">Saat, konum ve hava kendiliğinden eklenir.</p>`}
     <section class="card"><h2>Tahmin sizden öğreniyor</h2><p>Av çıkan: <b>${learn.good}/${learn.min}</b> · çıkmayan: <b>${learn.blank}/${learn.min}</b></p>
@@ -100,13 +107,13 @@ export function render(root, params = {}) {
     ${all.filter(c => c.blank).map(c => `<section class="card"><div class="row between"><span class="mute">Av çıkmadı · ${esc(c.at.replace('T', ' '))}${c.spot ? ` · ${esc(c.spot)}` : ''}</span><button class="btn danger" data-act="del" data-v="${c.id}">Sil</button></div></section>`).join('')}
     ${records.length ? `<section class="card"><h2>Rekorlarım</h2>${records.map(([k, r]) => `<div class="item"><b>${esc(k)}</b><span>${[r.length ? `${r.length} cm` : '', r.weight ? `${r.weight} kg` : ''].filter(Boolean).join(' · ')}</span></div>`).join('')}</section>` : ''}
     ${cs.map(c => `<section class="card">${c.photo ? `<img class="photo" src="${c.photo}" alt="${esc(c.species)}">` : ''}
-        <div class="row between"><h2>${esc(c.species)}${c.count > 1 ? ` ×${c.count}` : ''}</h2><span class="row"><button class="btn" data-act="card" data-v="${c.id}">Paylaş</button><button class="btn" data-act="edit" data-v="${c.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${c.id}">Sil</button></span></div>
+        <div class="row between"><h2>${esc(c.species)}${c.count > 1 ? ` ×${c.count}` : ''}</h2><span class="row"><button class="btn" data-act="card" data-v="${c.id}">Görsel</button><button class="btn" data-act="edit" data-v="${c.id}">Düzenle</button><button class="btn danger" data-act="del" data-v="${c.id}">Sil</button></span></div>
         <p>${esc(c.at.replace('T', ' '))}${c.spot ? ` · ${esc(c.spot)}` : ''}${c.length ? ` · ${c.length} cm` : ''}${c.weight ? ` · ${c.weight} kg` : ''}${c.released ? ' · bırakıldı' : ''}</p>
-        <p class="mute">${esc([c.lure, c.conditions, c.note].filter(Boolean).join(' · '))}</p>${catchWarnings(c.species, c.released ? null : c.length, c.at).map(w => `<p class="bad">${esc(w)}</p>`).join('')}</section>`).join('')}`;
+        <p class="mute">${esc([c.lure, c.conditions, c.note].filter(Boolean).join(' · '))}</p>${paylasim.status(c) ? `<p class="ok">${esc(paylasim.status(c))}</p>` : ''}${catchWarnings(c.species, c.released ? null : c.length, c.at).map(w => `<p class="bad">${esc(w)}</p>`).join('')}</section>`).join('')}`;
     const old = editing && app.state.catches.find(c => c.id === editing);
     if (old && mode) {
         const f = root.querySelector('[data-form="catch"]').elements;
-        for (const k of ['at', 'species', 'length', 'weight', 'count', 'lure', 'note']) { const field = f.namedItem(k); if (field) field.value = old[k] ?? ''; }
+        for (const k of ['at', 'species', 'length', 'weight', 'count', 'lure', 'note', 'share']) { const field = f.namedItem(k); if (field) field.value = old[k] ?? ''; }
         const box = f.namedItem('released');
         if (box) box.checked = old.released;
     }
@@ -153,7 +160,11 @@ export async function submit(form, root) {
         factors ||= info?.factors || null;
         score ??= info?.score ?? null;
     }
-    const [entry] = C.sanitizeState({ catches: [{ id: old?.id || uid('av'), at: f.at.value, species: blank ? 'Av çıkmadı' : val('species').trim(), blank, factors, score, spot: place.spot, lat: place.lat, lon: place.lon, length: val('length'), weight: val('weight'), count: val('count'), lure: val('lure').trim(), released, note: val('note').trim(), conditions, photo: photo || old?.photo || '' }] }).catches;
+    const share = blank ? '' : f.namedItem('share') ? val('share') : old?.share || '';
+    if (f.namedItem('sharename')) paylasim.setName(val('sharename'));
+    if (share && !paylasim.shareable(val('species').trim())) toast('Bu tür listede olmadığı için haritada paylaşılmayacak.', 'bad');
+    if (share && place.lat === null) toast('Konum olmadığı için haritada paylaşılmayacak.', 'bad');
+    const [entry] = C.sanitizeState({ catches: [{ share, shareId: old?.shareId || (share ? paylasim.newId() : ''), id: old?.id || uid('av'), at: f.at.value, species: blank ? 'Av çıkmadı' : val('species').trim(), blank, factors, score, spot: place.spot, lat: place.lat, lon: place.lon, length: val('length'), weight: val('weight'), count: val('count'), lure: val('lure').trim(), released, note: val('note').trim(), conditions, photo: photo || old?.photo || '' }] }).catches;
     if (!entry) { button.disabled = false; return toast('Tür girin.', 'bad'); }
     app.state.catches = [...app.state.catches.filter(c => c.id !== entry.id), entry];
     editing = null;

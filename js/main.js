@@ -12,6 +12,8 @@ import * as explore from './views/explore.js';
 import * as session from './session.js';
 import * as donus from './donus.js';
 import * as more from './views/more.js';
+import * as archive from './views/archive.js';
+import * as paylasim from './paylasim.js';
 import * as guide from './guide.js';
 import * as install from './install.js';
 import * as extras from './extras.js';
@@ -30,7 +32,7 @@ if (window.top !== window.self) {
     throw new Error('cerceve icinde');
 }
 
-const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, rehber, ayarlar: settings, daha: more };
+const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, rehber, ayarlar: settings, daha: more, arsiv: archive };
 // Telefonda menu altinda duran ekranlar
 const IN_MORE = ['plan', 'planlar', 'takim', 'turler', 'rehber', 'ayarlar'];
 // Alt cubukta Meralar secili gorunen ekranlar
@@ -145,6 +147,9 @@ try {
     donus.retry(() => app.go(current));
     window.addEventListener('online', () => donus.retry(() => app.go(current)));
     donus.renew();
+    paylasim.start();
+    // Paylasim durumu degisince acik form yoksa gunluk yenilenir.
+    window.addEventListener('kilcik:shared', () => { if (current === 'gunluk' && !document.querySelector('[data-form="catch"]')) log.render(root()); });
     today.autoRefresh();
     ortak.start();
     navigator.storage?.persist?.().catch(() => {});

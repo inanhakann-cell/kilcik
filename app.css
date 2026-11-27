@@ -150,3 +150,6 @@ nav button{flex-direction:row;gap:10px;font-size:.95rem;padding:11px 14px;border
 /* Guvenlik kutulari */
 .donus .btn.big,#nobet .btn.big{margin-top:12px}
 .nobetim{border-color:var(--ok)}.nobetim.gec{border:3px solid #f87171}.nobetim .btn.big,#yakin .btn.big{margin-top:10px}.kod{font:700 1.9rem ui-monospace,monospace;letter-spacing:.06em;user-select:all}
+/* Av arsivi */
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.grid3 select{padding:6px 4px}
+#arsiv-map{height:44vh;min-height:250px;border-radius:16px;overflow:hidden;margin-bottom:10px;isolation:isolate}.memory{border-color:var(--accent)}.memory .btn{margin-top:4px}

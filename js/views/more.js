@@ -10,6 +10,7 @@ import { chips, WARNINGS_URL } from '../ui.js';
 
 const ITEMS = [
     ['plan', 'Av planla', 'Nokta, gün ve tekniğe göre saatler'],
+    ['arsiv', 'Av arşivi', 'Tür ve aya göre avlarım, paylaşılan avlar'],
     ['noktalar', 'Noktalarım', 'Kayıtlı meralar ve fırsat taraması'],
     ['planlar', 'Kayıtlı planlar', 'Planlar ve takvime ekleme'],
     ['takim', 'Takım çantam', 'Kamış, makine, yem'],

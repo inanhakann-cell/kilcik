@@ -9,6 +9,7 @@ import { ruleFor, inClosedSeason, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
 import * as session from '../session.js';
 import * as donus from '../donus.js';
+import { memoryCard } from './archive.js';
 import * as install from '../install.js';
 import * as extras from '../extras.js';
 import * as push from '../push.js';
@@ -301,6 +302,7 @@ function draw(root) {
     ${donus.tripCard()}
     ${session.active() ? session.card() : ''}
     ${stormBanner(result?.storm)}
+    ${memoryCard()}
     <div class="row top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın'], ['hafta', 'Hafta']], tab)}</div>
     ${(result?.notes || []).map(n => `<p class="banner warn">${esc(n)}</p>`).join('')}
     ${searchFailed ? '<p class="banner warn">Yer arama servisi şu an yanıt vermiyor; iskele ve mendirek adları eksik olabilir.</p>' : ''}
