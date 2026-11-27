@@ -4,6 +4,13 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 40, date: '27.11.2026', title: 'Rüzgar renkleri',
+        items: [
+            'Rüzgar ve hamle değerleri artık Windy’deki renklerin aynısıyla gösterilir; hız arttıkça renk değişir.',
+            'Fırtına riski uyarısının çerçevesi de rüzgar sertleştikçe aynı renklere döner (gök gürültüsünde kırmızı).'
+        ]
+    },
+    {
         v: 39, date: '27.11.2026', title: 'Kalama sesi',
         items: [
             'İsterseniz bildirime dokununca veya uygulama açıkken bildirim gelince 3 saniyelik kalama sesi çalar (bir kez sorulur). iPhone ilk dokunuşu bekleyebilir.',

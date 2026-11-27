@@ -7,7 +7,7 @@ import * as guide from '../guide.js';
 import { islandWarning, nearLine } from '../places.js';
 import { cacheGet } from '../store.js';
 import { dipLine } from '../dip.js';
-import { app, $, esc, uid, toast, locate, persist, mapsUrl, mapTabs, pill } from '../ui.js';
+import { app, $, esc, uid, toast, locate, persist, mapsUrl, mapTabs, pill, windPaint } from '../ui.js';
 
 let map = null;
 let marks, picked, radar, windLayer, host;
@@ -90,7 +90,7 @@ async function drawWind() {
         windLayer.clearLayers();
         grid.forEach(p => window.L.marker([p.lat, p.lon], {
             interactive: false,
-            icon: window.L.divIcon({ className: 'windmark', iconSize: [64, 44], html: `<i style="transform:rotate(${Number(p.dir) + 180}deg)">↑</i><span>${Math.round(p.wind * 1.852)} km/sa</span>` })
+            icon: window.L.divIcon({ className: 'windmark', iconSize: [64, 44], html: `<i style="transform:rotate(${Number(p.dir) + 180}deg)">↑</i><span class="wchip" style="${windPaint(p.wind)}">${Math.round(p.wind * 1.852)} km/sa</span>` })
         }).addTo(windLayer));
     } catch { toast('Rüzgar haritası alınamadı.', 'bad'); }
 }

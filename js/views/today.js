@@ -13,7 +13,7 @@ import * as extras from '../extras.js';
 import * as push from '../push.js';
 import * as ortak from '../ortak.js';
 import { dipLine } from '../dip.js';
-import { app, $, esc, chips, toast, locate, persist, uid, grade, pill, opened, fold, WARNINGS_URL } from '../ui.js';
+import { app, $, esc, chips, toast, locate, persist, uid, grade, pill, opened, fold, WARNINGS_URL, toned, windColor } from '../ui.js';
 
 const REFRESH_MS = 30 * 60000;
 let area = null;        // { lat, lon, name }
@@ -237,7 +237,7 @@ function hero(item, open) {
         ${wanted() && !target ? `<p class="warn">${esc(wanted())} bu gün için uygun görünmüyor.</p>` : ''}
         ${top.length ? `<p class="fish">${top.map(f => esc(f.name)).join(' · ')}</p><p class="mute">Yem: ${esc(top[0].bait)}</p>` : ''}
         ${dipLine(p.lat, p.lon)}
-        ${now ? `<p class="weather">Şu an: rüzgar ${C.kmh(now.wind)} ${esc(C.windName(now.dir))}${now.wave == null ? '' : ` · dalga ${now.wave} m`} · ${now.air ?? '--'}°C</p>` : ''}
+        ${now ? `<p class="weather">Şu an: rüzgar ${toned(now.wind)} ${esc(C.windName(now.dir))}${now.wave == null ? '' : ` · dalga ${now.wave} m`} · ${now.air ?? '--'}°C</p>` : ''}
         ${w?.peak.safety.reasons.length ? `<p class="${cls}">${esc(w.peak.safety.reasons.join(' '))} <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi uyarılar</a></p>` : ''}
         <button type="button" class="btn primary big" data-guide="${p.lat},${p.lon}" data-name="${esc(p.name)}">Beni oraya götür</button>
         ${session.active() ? '' : '<button type="button" class="btn big" data-act="sesstart">● Ava başladım</button>'}
@@ -272,8 +272,10 @@ function packCard() {
 const when = t => `${new Date(`${t.slice(0, 10)}T12:00`).toLocaleDateString('tr-TR', { weekday: 'long' })} ${C.hhmm(t)}`;
 function stormBanner(s) {
     if (!s) return '';
-    const parts = [`rüzgar ${C.kmh(s.wind)}`, `hamle ${C.kmh(s.gust)}`, s.wave ? `dalga ${s.wave} m` : '', s.thunder ? 'gök gürültülü sağanak' : ''].filter(Boolean);
-    return `<p class="banner bad">⚠ Fırtına riski: ${esc(when(s.from))}${s.to === s.from ? '' : ` – ${esc(when(s.to))}`} · ${esc(parts.join(', '))}. KILÇIK’ın tahminidir. <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi uyarılara bakın</a></p>`;
+    const parts = [`rüzgar ${toned(s.wind)}`, `hamle ${toned(s.gust)}`, s.wave ? `dalga ${s.wave} m` : '', s.thunder ? 'gök gürültülü sağanak' : ''].filter(Boolean);
+    // Cerceve en sert degerin Windy rengi; en az sari (11 m/s = 21.4 kt). Gok gurultusu her zaman kirmizi.
+    const frame = windColor(Math.max(21.4, s.wind || 0, s.gust || 0));
+    return `<p class="banner ${s.thunder ? 'bad' : ''}"${s.thunder ? '' : ` style="border:3px solid ${frame}"`}>⚠ Fırtına riski: ${esc(when(s.from))}${s.to === s.from ? '' : ` – ${esc(when(s.to))}`} · ${parts.join(', ')}. KILÇIK’ın tahminidir. <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi uyarılara bakın</a></p>`;
 }
 
 function draw(root) {

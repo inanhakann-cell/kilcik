@@ -4,7 +4,7 @@ import * as api from '../api.js';
 import { contextFor, solunarFor, moonFor, datesOf } from '../planner.js';
 import { SAMPLE_SPOTS } from '../species.js';
 import { cacheGet, cacheSet } from '../store.js';
-import { app, $, esc, chips, toast, locate, wind, show, grade, opened, fold, WARNINGS_URL, SAFETY } from '../ui.js';
+import { app, $, esc, chips, toast, locate, wind, show, grade, opened, fold, WARNINGS_URL, SAFETY, toned, windPaint } from '../ui.js';
 
 let point = null;   // { lat, lon, name }
 let data = null;    // { pack, shore }
@@ -18,8 +18,6 @@ const el = () => document.getElementById('view-hava');
 const hm = (ms, pack) => C.localIso(ms, pack.offset).slice(11, 16);
 const dayName = d => new Date(`${d}T12:00`).toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short' });
 const sky = c => (c === null ? '' : c >= 95 ? '⛈' : c >= 80 ? '🌦' : c >= 71 && c <= 77 ? '🌨' : c >= 51 ? '🌧' : c >= 45 ? '🌫' : c >= 3 ? '☁' : c >= 1 ? '⛅' : '☀');
-// Windy benzeri renk olcegi (km/sa)
-const heat = kmh => (kmh === null ? '' : `background:hsl(${Math.max(0, 200 - kmh * 4)} 65% 32%)`);
 
 /** Su seviyesindeki tepe ve dip noktalari. */
 export function tideTurns(rows) {
@@ -84,8 +82,8 @@ function nowCards() {
     const moon = moonDay(pack, r.time.slice(0, 10));
     const day = pack.days.find(d => d.date === r.time.slice(0, 10));
     const cards = [
-        ['Rüzgar', wind(r.wind), `${C.windName(r.dir)} (${show(r.dir, '°')})`],
-        ['Hamle', wind(r.gust), ''],
+        ['Rüzgar', wind(r.wind), `${C.windName(r.dir)} (${show(r.dir, '°')})`, windPaint(r.wind)],
+        ['Hamle', wind(r.gust), '', windPaint(r.gust)],
         ['Basınç', show(r.pressure, ' hPa'), dp === null ? '' : `${dp > 0 ? '+' : ''}${dp} hPa / 3 saat`],
         ['Hava', `${sky(r.code)} ${show(r.air, '°C')}`, `Nem %${show(r.humidity)} · bulut %${show(r.cloud)}`],
         ['Yağış', show(r.precip, ' mm'), `48 saatte ${show(r.rain, ' mm')}`],
@@ -112,16 +110,16 @@ function nowCards() {
         ctx.moon = moonFor(pack, row.time.slice(0, 10));
         const s = C.scoreHour(pack, j, ctx);
         const [word, cls] = s.safety.level === 'nogo' ? ['gitme', 'bad'] : grade(s.score);
-        return `<tr><th>${row.time.slice(11, 13)}:00</th><td>${sky(row.code)}</td><td>${C.kmh(row.wind)}</td><td>${row.wave ?? '--'} m</td><td class="${cls}">${word}</td></tr>`;
+        return `<tr><th>${row.time.slice(11, 13)}:00</th><td>${sky(row.code)}</td><td>${toned(row.wind)}</td><td>${row.wave ?? '--'} m</td><td class="${cls}">${word}</td></tr>`;
     }).join('');
     const quad = [['Dalga', show(r.wave, ' m')], ['Basınç', `${show(r.pressure)}${dp === null ? '' : dp > 0 ? ' ↑' : dp < 0 ? ' ↓' : ''}`], ['Hava', show(r.air, '°')], ['Su', show(r.sea, '°')]];
     return { now: `${status.ok ? '' : `<p class="banner bad">${esc(status.message)}</p>`}
-    <section class="card hero"><p class="wind">${C.kmh(r.wind)} <small>${esc(C.windName(r.dir))} · hamle ${C.kmh(r.gust)}</small></p>
+    <section class="card hero"><p class="wind">${toned(r.wind)} <small>${esc(C.windName(r.dir))} · hamle ${toned(r.gust)}</small></p>
         <div class="quad">${quad.map(([k, v]) => `<div><small>${k}</small><b>${esc(v)}</b></div>`).join('')}</div>
         <p class="${safeClass}"><b>${esc(safeText)}</b> ${esc(scored.safety.reasons.join(' '))}</p>
         <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi meteoroloji uyarıları</a></section>
     <section class="card"><table class="mini"><tr><th>Saat</th><th></th><th>Rüzgar</th><th>Dalga</th><th>Balık</th></tr>${hours}</table></section>`,
-    all: `<div class="metrics">${cards.map(([k, v, sub]) => `<div class="metric"><small>${k}</small><b>${esc(v)}</b><p>${esc(sub)}</p></div>`).join('')}</div>`,
+    all: `<div class="metrics">${cards.map(([k, v, sub, paint]) => `<div class="metric"><small>${k}</small><b${paint ? ` class="wchip" style="${paint}"` : ''}>${esc(v)}</b><p>${esc(sub)}</p></div>`).join('')}</div>`,
     factors: `<p>Puan <b>${scored.score ?? '--'}/100</b></p>
         ${scored.factors.map(f => { const q = f.points / f.max; return `<div class="factor"><span class="${q >= 0.75 ? 'ok' : q >= 0.45 ? 'warn' : 'bad'}">${q >= 0.75 ? '✓' : q >= 0.45 ? '△' : '✕'} ${esc(f.text)}</span><meter min="0" max="${f.max}" value="${f.points}"></meter></div>`; }).join('')}
         <p class="${safeClass}"><b>Kıyıdan:</b> ${esc(safeText)} ${esc(scored.safety.reasons.join(' '))}</p>
@@ -141,8 +139,8 @@ function table() {
         ${line('', r => [sky(r.code)])}
         ${line('Sıcaklık °C', r => [r.air === null ? null : Math.round(r.air)])}
         ${line('Yağış mm', r => [r.precip || '·'])}
-        ${line('Rüzgar km/sa', r => [km(r.wind), heat(km(r.wind))])}
-        ${line('Hamle km/sa', r => [km(r.gust), heat(km(r.gust))])}
+        ${line('Rüzgar km/sa', r => [km(r.wind), windPaint(r.wind)])}
+        ${line('Hamle km/sa', r => [km(r.gust), windPaint(r.gust)])}
         ${line('Yön', r => [r.dir === null ? null : `<span class="arrow" style="transform:rotate(${r.dir + 180}deg)">↑</span><br>${C.dirCode(r.dir)}`])}
         ${line('Basınç', r => [r.pressure === null ? null : Math.round(r.pressure)])}
         ${line('Dalga m', r => [r.wave])}

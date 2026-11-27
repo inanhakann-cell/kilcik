@@ -9,7 +9,7 @@ import { shareCard } from '../share.js';
 import { speciesActivity, ownEvidence } from '../activity.js';
 import { seenNearby, islandWarning } from '../places.js';
 import * as extras from '../extras.js';
-import { app, $, esc, uid, show, wind, options, chips, toast, download, copy, locate, persist, mapsUrl, grade, pill, opened, fold, SAFETY } from '../ui.js';
+import { app, $, esc, uid, show, wind, options, chips, toast, download, copy, locate, persist, mapsUrl, grade, pill, opened, fold, SAFETY, windPaint } from '../ui.js';
 
 let result = null;
 let chart = null;
@@ -112,8 +112,8 @@ function metrics() {
     const clock = ms => C.localIso(ms, pack.offset).slice(11, 16);
     const sol = periods.map(p => `${p.type === 'ana' ? 'Ana' : 'Ara'} ${clock(p.at - p.half)}–${clock(p.at + p.half)}`).join(', ') || '--';
     const all = [
-        ['Rüzgar', wind(r.wind), 'Saatlik ortalama, 10 m yükseklikte.'],
-        ['Hamle', wind(r.gust), 'Ani rüzgar tepe değeri. 45 km/sa üstü atışı zorlaştırır.'],
+        ['Rüzgar', wind(r.wind), 'Saatlik ortalama, 10 m yükseklikte.', windPaint(r.wind)],
+        ['Hamle', wind(r.gust), 'Ani rüzgar tepe değeri. 45 km/sa üstü atışı zorlaştırır.', windPaint(r.gust)],
         ['Rüzgar yönü', `${C.windName(r.dir)} (${show(r.dir, '°')})`, 'Rüzgarın geldiği yön.'],
         ['Kıyıya göre rüzgar', C.windToShore(r.dir, ctx.bearing) || '--', ctx.bearing === null ? 'Kıyı yönü bu noktada belirlenemedi.' : `Deniz yaklaşık ${C.dirCode(ctx.bearing)} yönünde (yükseklik modelinden tahmin).`],
         ...(ctx.salt ? [
@@ -141,7 +141,7 @@ function metrics() {
         ] : []),
         ['Gün doğumu / batımı', day ? `${C.hhmm(day.sunrise)} / ${C.hhmm(day.sunset)}` : '--', 'Alacakaranlık çoğu tür için en verimli zaman.']
     ];
-    return all.map(([k, v, help]) => `<details class="metric"><summary><small>${esc(k)}</small><b>${esc(v)}</b></summary><p>${esc(help)}</p></details>`).join('');
+    return all.map(([k, v, help, paint]) => `<details class="metric"><summary><small>${esc(k)}</small><b${paint ? ` class="wchip" style="${paint}"` : ''}>${esc(v)}</b></summary><p>${esc(help)}</p></details>`).join('');
 }
 
 function renderResult(root) {
