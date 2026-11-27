@@ -18,6 +18,7 @@ import * as welcome from './welcome.js';
 import * as news from './news.js';
 import * as push from './push.js';
 import { loadLands } from './places.js';
+import { loadDip } from './dip.js';
 
 const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings, daha: more };
 // Telefonda menu altinda duran ekranlar
@@ -112,7 +113,7 @@ try {
     await session.init();
     net();
     // Ada uyarilari ekran cizilmeden hazir olsun (uygulamayla gelen dosya).
-    await loadLands().catch(() => {});
+    await Promise.all([loadLands().catch(() => {}), loadDip()]);
     app.go('bugun');
     // Ana ekran simgesine basili tutunca acilan kisayollar
     const start = new URLSearchParams(location.search).get('git');

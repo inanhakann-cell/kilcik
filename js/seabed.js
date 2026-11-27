@@ -1,5 +1,6 @@
 // Deniz tabani analizi. Derinlik: EMODnet Bathymetry (~115 m hucre; negatif = su, pozitif = kara).
 // Dip tipi: EMODnet Geology (kapsama yer yer yoktur). Sonuc balik olasiligi degil, yapi elverisliligidir.
+import { sedimentKind } from './dip.js';
 export const CELL = 0.0010416666666666667;
 const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 
@@ -239,17 +240,15 @@ export async function loadGrid(lat, lon, radiusM) {
     } finally { clearTimeout(timer); }
 }
 
-const SUBSTRATE = [[/rock|boulder/i, 'kaya / blok', 8], [/mixed/i, 'karışık (taş, çakıl, kum)', 6], [/coarse/i, 'iri taneli (çakıl, iri kum)', 4], [/muddy sand|sand/i, 'kum', 2], [/mud/i, 'çamur', -3]];
 export async function substrate(lat, lon) {
     const d = 0.005;
-    for (const layer of ['seabed_substrate_250k', 'seabed_substrate_1m']) {
+    // En ayrintilidan kabaya: 1:100.000 (Turkiye kiyilari), 1:250.000, 1:1.000.000.
+    for (const [layer, scale] of [['seabed_substrate_100k', '1:100.000'], ['seabed_substrate_250k', '1:250.000'], ['seabed_substrate_1m', 'kaba harita (1:1.000.000)']]) {
         const url = `https://drive.emodnet-geology.eu/geoserver/gtk/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&LAYERS=${layer}&QUERY_LAYERS=${layer}&SRS=EPSG:4326&BBOX=${lon - d},${lat - d},${lon + d},${lat + d}&WIDTH=11&HEIGHT=11&X=5&Y=5&INFO_FORMAT=application/json&PROPERTYNAME=folk_5cl_txt`;
         const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
         if (!res.ok) continue;
-        const text = (await res.json()).features?.[0]?.properties?.folk_5cl_txt;
-        if (!text) continue;
-        const hit = SUBSTRATE.find(([re]) => re.test(text));
-        if (hit) return { name: hit[1], bonus: hit[2], scale: layer.endsWith('1m') ? 'kaba harita (1:1.000.000)' : '1:250.000' };
+        const hit = sedimentKind((await res.json()).features?.[0]?.properties?.folk_5cl_txt);
+        if (hit) return { ...hit, scale };
     }
     return null;
 }

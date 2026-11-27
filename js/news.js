@@ -4,6 +4,14 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 34, date: '27.11.2026', title: 'Dip bilgisi',
+        items: [
+            'Bugün, mera kartları, harita ve noktalarınızda yaklaşık dip bilgisi görünüyor.',
+            'Kıyı yapısı (kumsal, çakıl, kayalık) ve daha ayrıntılı dip haritası eklendi.',
+            'Dip bilgisi yaklaşıktır; gördüğünüzü işaretlemeyi sürdürün.'
+        ]
+    },
+    {
         v: 33, date: '27.11.2026', title: 'Av bildirimi',
         items: [
             'Yarın balığa değerse akşam 19:00’da sebepleriyle bildirim gelir.',

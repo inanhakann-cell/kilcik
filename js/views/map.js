@@ -5,6 +5,7 @@ import * as explore from './explore.js';
 import * as extras from '../extras.js';
 import * as guide from '../guide.js';
 import { islandWarning } from '../places.js';
+import { dipLine } from '../dip.js';
 import { app, $, esc, uid, toast, locate, persist, mapsUrl, mapTabs, pill } from '../ui.js';
 
 let map = null;
@@ -40,7 +41,7 @@ function popupFor(lat, lon, name, extra = '') {
         <button class="btn" data-p="save">Noktayı kaydet</button>
         <button class="btn" data-p="log">Buraya av ekle</button>
         <button class="btn" data-p="send">Arkadaşıma gönder</button>
-        <a class="btn" href="${mapsUrl(lat, lon)}" target="_blank" rel="noopener">Yol tarifi</a>${islandWarning(lat, lon)}`;
+        <a class="btn" href="${mapsUrl(lat, lon)}" target="_blank" rel="noopener">Yol tarifi</a>${islandWarning(lat, lon)}${dipLine(lat, lon)}`;
     box.addEventListener('click', async e => {
         const act = e.target.dataset?.p;
         const named = name === 'Seçilen nokta' ? '' : name;

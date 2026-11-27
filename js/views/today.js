@@ -10,6 +10,7 @@ import { cacheGet, cacheSet } from '../store.js';
 import * as session from '../session.js';
 import * as install from '../install.js';
 import * as extras from '../extras.js';
+import { dipLine } from '../dip.js';
 import { app, $, esc, chips, toast, locate, persist, uid, grade, pill, opened, fold, WARNINGS_URL } from '../ui.js';
 
 const REFRESH_MS = 30 * 60000;
@@ -166,6 +167,7 @@ function hero(item, open) {
         ${best ? `<p class="best"><span class="when">${span(best.from, best.to)}</span>${target ? `<span class="mute">${esc(target.name)} için en iyi saat</span>` : ''}</p>` : `<p class="bad">${plan.allUnsafe ? 'Güvenli saat yok.' : 'Bugün için saat kalmadı; Yarın’a bakın.'}</p>`}
         ${wanted() && !target ? `<p class="warn">${esc(wanted())} bu gün için uygun görünmüyor.</p>` : ''}
         ${top.length ? `<p class="fish">${top.map(f => esc(f.name)).join(' · ')}</p><p class="mute">Yem: ${esc(top[0].bait)}</p>` : ''}
+        ${dipLine(p.lat, p.lon)}
         ${now ? `<p class="weather">Şu an: rüzgar ${C.kmh(now.wind)} ${esc(C.windName(now.dir))}${now.wave == null ? '' : ` · dalga ${now.wave} m`} · ${now.air ?? '--'}°C</p>` : ''}
         ${w?.peak.safety.reasons.length ? `<p class="${cls}">${esc(w.peak.safety.reasons.join(' '))} <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi uyarılar</a></p>` : ''}
         <button type="button" class="btn primary big" data-guide="${p.lat},${p.lon}" data-name="${esc(p.name)}">Beni oraya götür</button>

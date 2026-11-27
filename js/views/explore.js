@@ -10,6 +10,7 @@ import { SPECIES } from '../species.js';
 import { ruleFor, ruleText } from '../legal.js';
 import { cacheGet, cacheSet } from '../store.js';
 import * as guide from '../guide.js';
+import { dipLine } from '../dip.js';
 import * as extras from '../extras.js';
 import { app, $, esc, chips, toast, uid, persist, download, copy, mapsUrl, mapTabs, pill, grade, opened as openFolds, fold, SAFETY } from '../ui.js';
 
@@ -37,7 +38,7 @@ const el = () => document.getElementById('view-kesif');
 const paint = () => { const r = el(); if (r && !r.hidden) draw(r); };
 
 async function cachedHabitat(lat, lon) {
-    const key = `hab:${lat.toFixed(4)},${lon.toFixed(4)}`;
+    const key = `dip:${lat.toFixed(4)},${lon.toFixed(4)}`;
     const hit = await cacheGet(key);
     if (hit) return hit;
     const value = await habitat(lat, lon);
@@ -168,7 +169,7 @@ function card(s, n, open) {
             <div class="scroll"><table class="moon"><tr><th>Kıyıdan açığa</th>${s.profile.map(p => `<th>${p.m} m</th>`).join('')}</tr><tr><td>Derinlik</td>${s.profile.map(p => `<td><b>${p.depth === null ? '--' : `${p.depth} m`}</b></td>`).join('')}</tr></table></div>
             <p>Noktada <b>${s.f.depth.toFixed(0)} m</b> · dip: <b>${s.bottom ? esc(s.bottom.name) : 'veri yok'}</b>${s.bottom ? ` <span class="mute">(${esc(s.bottom.scale)})</span>` : ''}</p>
             <p class="mute">${esc(describe(s.f, result.mode === 'tekne' ? 'tekne' : 'kiyi').filter(t => !t.includes('kumluk') && !t.includes('taşlık')).join(' · ') || 'belirgin derinlik yapısı yok')}${s.shore ? ` · rüzgar ${s.shore}` : ''}</p>
-            ${extras.floorChips(go.lat, go.lon)}`, open, 'sub')}
+            ${dipLine(go.lat, go.lon)}${extras.floorChips(go.lat, go.lon)}`, open, 'sub')}
         ${islandWarning(go.lat, go.lon)}
         ${fold(`more:${key}`, 'Diğer', `<p class="mute">Puan ${s.total} · ${esc(result.area.name)} merkezine ${distanceKm(result.area.lat, result.area.lon, s.lat, s.lon).toFixed(1)} km</p>
             <p class="mono">Balık noktası <b>${s.lat}, ${s.lon}</b>${s.stand ? `<br>Durma noktası (kıyı) ${s.stand.lat}, ${s.stand.lon} · atış ~${s.stand.cast} m` : ''}</p>
