@@ -111,8 +111,8 @@ details details,.hero details{margin-top:10px}
 .spotmark.mid b{background:var(--warn)}.spotmark.low b{background:#94a3b8}
 .mini td,.mini th{white-space:nowrap}
 #news li{margin:8px 0}
-#welcome,#news{position:fixed;inset:0;z-index:1950;background:var(--bg);overflow:auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom))}
-#welcome .sheet,#news .sheet{max-width:520px;margin:0 auto}
+#welcome,#news,#ask{position:fixed;inset:0;z-index:1950;background:var(--bg);overflow:auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom))}
+#welcome .sheet,#news .sheet,#ask .sheet{max-width:520px;margin:0 auto}
 .floors{margin-top:6px}
 .best{margin:4px 0}.best .mute{display:block}.wind small{display:block}
 .popup{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:220px}.popup>b,.popup>br,.popup>.mono{grid-column:1/-1}.popup>br{display:none}.popup .btn{margin:0;min-height:38px;padding:4px 6px;font-size:.8rem;line-height:1.2;text-align:center}

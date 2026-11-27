@@ -4,6 +4,15 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 33, date: '27.11.2026', title: 'Av bildirimi',
+        items: [
+            'Yarın balığa değerse akşam 19:00’da sebepleriyle bildirim gelir.',
+            'Açılışta izin sorulur; ☰ Menü → Av bildirimi’nden açıp kapatabilirsiniz.',
+            'iPhone’da uygulama ana ekrana eklenmiş olmalı (iOS 16.4 veya üstü).',
+            'Sunucuya yalnızca bildirim adresi, yaklaşık bölge, hedef balık ve ayar gider.'
+        ]
+    },
+    {
         v: 32, date: '27.11.2026', title: 'Ada noktaları düzeltildi',
         items: [
             'Bugün ekranı artık arada deniz olan ada noktalarını önermiyor.',
