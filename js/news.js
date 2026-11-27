@@ -4,6 +4,16 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 37, date: '27.11.2026', title: 'Daha hızlı ve isabetli',
+        items: [
+            'Rüzgar artık dört hava modelinin ortalaması: kıyı ölçümleriyle sınamada tek tahminden daha yakın çıktı.',
+            'Türkiye kıyılarındaki meralar kendi sunucumuzdan gelir; harita sunucusu dolu olsa da listelenir.',
+            'Bildirim bölgesi isterseniz bulunduğunuz yeri izler (Menü → Av bildirimi).',
+            'Günlük ekranında isabet karnesi: tahmin ne kadar tuttu?',
+            'Bugün ekranında “Bu bölgeyi internetsiz için indir” düğmesi.'
+        ]
+    },
+    {
         v: 36, date: '27.11.2026', title: 'Her yerde meralar',
         items: [
             'Uygulama açılınca konumunuz alınır ve çevrenizdeki kıyı meraları gösterilir.',

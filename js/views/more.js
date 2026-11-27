@@ -27,6 +27,8 @@ export function render(root) {
     push.paint(root);
 }
 
+export const change = (field, value, root) => push.change(field, root);
+
 export const actions = {
     ...push.actions,
     theme: (v, root) => { extras.setLook('theme', v); render(root); },

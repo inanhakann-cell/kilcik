@@ -48,10 +48,38 @@ export async function paint(root) {
         <div class="row wrap"><button type="button" class="btn${on ? '' : ' primary'}" data-act="pushon">${on ? 'Bölgeyi ve ayarı güncelle' : 'İzin ver'}</button>
         <button type="button" class="btn" data-act="pushoff">${on ? 'İzin verme (kapat)' : 'İzin verme'}</button>
         ${on ? '<button type="button" class="btn" data-act="pushtest">Deneme bildirimi gönder</button>' : ''}</div>`}
+        ${on && !hint ? `<label class="check"><input type="checkbox" data-field="pushfollow" ${on.follow ? 'checked' : ''}> Bildirim bölgesi bulunduğum yeri izlesin</label>
+        <p class="mute">Açıksa, uygulamayı başka bir yerde açtığınızda yeni bölgenin yaklaşık konumu sunucuya gönderilir.</p>` : ''}
         <p class="mute">Sunucuya yalnızca bildirim adresi, bölgenin yaklaşık konumu, hedef balık ve bu ayar gider.</p>`;
 }
 
+export async function change(field, root) {
+    const on = saved();
+    if (field !== 'pushfollow' || !on) return;
+    const follow = !on.follow;
+    localStorage.setItem(KEY, JSON.stringify({ ...on, follow }));
+    if (follow) { const area = await currentArea(); if (area.gps) { delete on.lat; localStorage.setItem(KEY, JSON.stringify({ ...on, follow })); await areaChanged(area); } }
+    paint(root);
+}
+
 const keyBytes = s => Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
+
+async function send(sub, area, wanted, follow) {
+    const shore = await api.shoreInfo(area.lat, area.lon).catch(() => null);
+    await post('/abone', { sub: sub.toJSON(), area: { name: area.name, lat: area.lat, lon: area.lon, bearing: shore?.bearing ?? null }, species: app.pref.species || '', level: wanted, technique: app.draft.technique });
+    localStorage.setItem(KEY, JSON.stringify({ level: wanted, name: area.name, lat: area.lat, lon: area.lon, follow }));
+}
+
+/** Kullanici istediyse bildirimin bolgesi bulunulan yere tasinir (5 km'den fazla yer degisince). */
+export async function areaChanged(area) {
+    const on = saved();
+    if (!on?.follow || !offered() || !supported() || Notification.permission !== 'granted') return;
+    if (Number.isFinite(on.lat) && Math.hypot(on.lat - area.lat, (on.lon - area.lon) * 0.76) * 111 < 5) return;
+    try {
+        const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+        if (sub) await send(sub, area, on.level, true);
+    } catch { /* sunucuya ulasilamazsa bir sonraki acilista yeniden denenir */ }
+}
 
 async function subscribe(wanted) {
     try {
@@ -62,10 +90,7 @@ async function subscribe(wanted) {
         if (!res.ok) throw new Error('Sunucuya ulaşılamadı.');
         const { key } = await res.json();
         const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
-        const area = await currentArea();
-        const shore = await api.shoreInfo(area.lat, area.lon).catch(() => null);
-        await post('/abone', { sub: sub.toJSON(), area: { ...area, bearing: shore?.bearing ?? null }, species: app.pref.species || '', level: wanted, technique: app.draft.technique });
-        localStorage.setItem(KEY, JSON.stringify({ level: wanted, name: area.name }));
+        await send(sub, await currentArea(), wanted, Boolean(saved()?.follow));
         toast('Bildirimler açık.', 'ok');
     } catch (err) { toast(`Bildirim açılamadı: ${err.message}`, 'bad'); }
 }

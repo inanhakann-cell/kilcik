@@ -263,6 +263,31 @@ export function calibrate(catches, min = 8) {
     out.effects.sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
     return out;
 }
+/**
+ * Isabet karnesi: ayni gun ve yerdeki kayitlar tek av sayilir; tahmin puani yuksek ve dusuk
+ * avlarda balik cikma orani karsilastirilir. Her grupta `min` av olmadan yorum yapilmaz.
+ */
+export function scorecard(catches, min = 5, line = 65) {
+    const trips = new Map();
+    for (const c of catches) {
+        if (!isNum(c.score) || !c.at) continue;
+        const key = `${c.at.slice(0, 10)}|${c.lat?.toFixed(2)},${c.lon?.toFixed(2)}`;
+        const t = trips.get(key) || { scores: [], fish: false };
+        t.scores.push(c.score);
+        t.fish ||= !c.blank;
+        trips.set(key, t);
+    }
+    const group = () => ({ trips: 0, fish: 0 });
+    const high = group(), low = group();
+    for (const t of trips.values()) {
+        const g = t.scores.reduce((a, b) => a + b, 0) / t.scores.length >= line ? high : low;
+        g.trips++;
+        if (t.fish) g.fish++;
+    }
+    for (const g of [high, low]) g.rate = g.trips ? Math.round((g.fish / g.trips) * 100) : null;
+    return { high, low, total: trips.size, min, line, ready: high.trips >= min && low.trips >= min };
+}
+
 export const FACTOR_NAMES = { zaman: 'Günün saati', solunar: 'Solunar', basinc: 'Basınç eğilimi', ruzgar: 'Rüzgar', dalga: 'Dalga', deniz_gecmisi: 'Deniz geçmişi', gelgit: 'Su hareketi', gokyuzu: 'Gökyüzü', su_egilimi: 'Su sıcaklığı değişimi', ay: 'Ay evresi' };
 const FACTOR_KEYS = Object.keys(FACTOR_NAMES);
 export const factorRatios = factors => Object.fromEntries(factors.filter(f => FACTOR_KEYS.includes(f.key) && f.max).map(f => [f.key, Number((f.points / f.max).toFixed(2))]));
@@ -316,7 +341,7 @@ export function sanitizeState(s) {
             return {
                 id: x.id, at: str(x.at, 16), species: str(x.species, 80), spot: str(x.spot, 80), ...(validCoord(c.lat, c.lon) ? c : { lat: null, lon: null }),
                 length: num(x.length), weight: num(x.weight, 2), count: Math.max(1, Math.round(num(x.count) || 1)), lure: str(x.lure, 120),
-                released: Boolean(x.released), note: str(x.note), conditions: str(x.conditions), blank: Boolean(x.blank),
+                released: Boolean(x.released), note: str(x.note), conditions: str(x.conditions), blank: Boolean(x.blank), score: Number.isFinite(x.score) ? Math.max(0, Math.min(100, Math.round(x.score))) : null,
                 factors: x.factors && typeof x.factors === 'object' ? Object.fromEntries(Object.entries(x.factors).filter(([k, v]) => FACTOR_KEYS.includes(k) && isNum(v) && v >= 0 && v <= 1)) : null,
                 photo: /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x.photo || '') ? x.photo : ''
             };

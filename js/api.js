@@ -48,16 +48,45 @@ function build(w, m) {
     return { offset: w.utc_offset_seconds || 0, rows, days, updatedAt: new Date().toISOString() };
 }
 
+// Kiyi havalimani olcumleriyle (2026 ilkbahar ve sonbahar) karsilastirmada ortalama tek tahminden daha isabetli cikti.
+const WIND_MODELS = ['ecmwf_ifs025', 'icon_seamless', 'gfs_seamless', 'meteofrance_seamless'];
+
+/** Ruzgar hizi ve yonunu modellerin ortalamasiyla degistirir; hamle guvenlik icin dusurulmez.
+    En az iki modelin verisi olmayan saatte varsayilan tahmin kalir. */
+export function blendWind(w, spread) {
+    const base = w.hourly, m = spread?.hourly;
+    if (!m) return w;
+    const index = new Map(m.time.map((t, i) => [t, i]));
+    const hourly = { ...base, wind_speed_10m: [...base.wind_speed_10m], wind_direction_10m: [...base.wind_direction_10m], wind_gusts_10m: [...base.wind_gusts_10m] };
+    const mean = v => v.reduce((a, b) => a + b, 0) / v.length;
+    let used = 0;
+    base.time.forEach((time, i) => {
+        const j = index.get(time);
+        const rows = WIND_MODELS.map(name => ({ s: m[`wind_speed_10m_${name}`]?.[j], d: m[`wind_direction_10m_${name}`]?.[j], g: m[`wind_gusts_10m_${name}`]?.[j] }))
+            .filter(r => Number.isFinite(r.s) && Number.isFinite(r.d));
+        if (rows.length < 2) return;
+        used++;
+        hourly.wind_speed_10m[i] = mean(rows.map(r => r.s));
+        const x = mean(rows.map(r => r.s * Math.cos(r.d * Math.PI / 180))), y = mean(rows.map(r => r.s * Math.sin(r.d * Math.PI / 180)));
+        if (Math.hypot(x, y) > 0.1) hourly.wind_direction_10m[i] = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        const gusts = rows.map(r => r.g).filter(Number.isFinite);
+        const own = base.wind_gusts_10m[i];
+        if (gusts.length) hourly.wind_gusts_10m[i] = Math.max(Number.isFinite(own) ? own : 0, mean(gusts), hourly.wind_speed_10m[i]);
+    });
+    return used ? { ...w, hourly, blended: true } : w;
+}
+
 /** salt=false ise deniz verisi istenmez ve dalga tahmin edilmez. */
 export async function loadPack(lat, lon, salt) {
     const key = `wx:${lat.toFixed(3)},${lon.toFixed(3)},${salt ? 1 : 0}`;
     try {
         const base = `${at(lat, lon)}&timezone=auto&forecast_days=14&past_days=2`;
-        const [w, m] = await Promise.all([
+        const [w, m, spread] = await Promise.all([
             getJson(`https://api.open-meteo.com/v1/forecast?${base}&hourly=${WX}&daily=sunrise,sunset&wind_speed_unit=kn`),
-            salt ? getJson(`https://marine-api.open-meteo.com/v1/marine?${base}&hourly=${SEA}`).catch(() => null) : undefined
+            salt ? getJson(`https://marine-api.open-meteo.com/v1/marine?${base}&hourly=${SEA}`).catch(() => null) : undefined,
+            getJson(`https://api.open-meteo.com/v1/forecast?${base}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&models=${WIND_MODELS}&wind_speed_unit=kn`).catch(() => null)
         ]);
-        const pack = build(w, m);
+        const pack = build(blendWind(w, spread), m);
         await cacheSet(key, pack);
         return { ...pack, source: 'canlı' };
     } catch (err) {

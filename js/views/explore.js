@@ -37,12 +37,13 @@ const LOCAL = {
 const el = () => document.getElementById('view-kesif');
 const paint = () => { const r = el(); if (r && !r.hidden) draw(r); };
 
-async function cachedHabitat(lat, lon) {
+const DEEP = 24;   // yalnizca en yuksek puanli noktalarda cevrim ici habitat servisi beklenir
+async function cachedHabitat(lat, lon, quick) {
     const key = `dip:${lat.toFixed(4)},${lon.toFixed(4)}`;
     const hit = await cacheGet(key);
     if (hit) return hit;
-    const value = await habitat(lat, lon);
-    if (value) await cacheSet(key, value);
+    const value = await habitat(lat, lon, quick);
+    if (value && !quick) await cacheSet(key, value);
     return value;
 }
 
@@ -130,7 +131,7 @@ async function run() {
         // En yuksek puanli noktalarin habitati once okunur.
         const order = result.spots.map(source);
         for (let i = 0; i < order.length; i += 6) {
-            await Promise.all(order.slice(i, i + 6).map(async s => bottoms.set(s, await cachedHabitat(s.lat, s.lon))));
+            await Promise.all(order.slice(i, i + 6).map(async (s, j) => bottoms.set(s, await cachedHabitat(s.lat, s.lon, i + j >= DEEP))));
             if (mine !== token) return;
             publish();
             say(`Dip habitatı ${Math.min(i + 6, order.length)}/${order.length}…`);

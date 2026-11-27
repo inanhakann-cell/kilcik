@@ -10,6 +10,7 @@ import { cacheGet, cacheSet } from '../store.js';
 import * as session from '../session.js';
 import * as install from '../install.js';
 import * as extras from '../extras.js';
+import * as push from '../push.js';
 import { dipLine } from '../dip.js';
 import { app, $, esc, chips, toast, locate, persist, uid, grade, pill, opened, fold, WARNINGS_URL } from '../ui.js';
 
@@ -40,11 +41,12 @@ export function followLocation() {
             noFix = false;
             const prev = area || await cacheGet('area');
             if (!follow) return false;
-            if (prev?.gps && distanceKm(prev.lat, prev.lon, p.lat, p.lon) < MOVED_KM) { area = prev; return false; }
+            if (prev?.gps && distanceKm(prev.lat, prev.lon, p.lat, p.lon) < MOVED_KM) { area = prev; push.areaChanged(prev); return false; }
             area = { lat: p.lat, lon: p.lon, name: 'Konumum', gps: true };
             result = null;
             await cacheSet('area', area);
             await cacheSet('weather:point', area);
+            push.areaChanged(area);
             return true;
         } catch { noFix = true; return false; } finally { locating = null; }
     })();
@@ -189,15 +191,23 @@ const verdictOf = item => (item.old ? [`${item.old} saatlik eski tahmin: güvenl
 async function offlineDownload() {
     if (!navigator.onLine) return toast('İndirme için internet gerekli.', 'bad');
     toast('Yöre verisi indiriliyor…');
+    // Once cevredeki meralar tamamen aranir ki liste cihazda hazir olsun.
+    area ||= (await cacheGet('area')) || defaultArea();
+    const hub = await api.searchHub(area.lat, area.lon);
+    await loadRegion(area.lat, area.lon).catch(() => {});
+    if (!hub.none) await findPlaces(hub.lat, hub.lon, 25, 10, area).catch(() => {});
+    while (busy) await new Promise(done => setTimeout(done, 300));
     await compute();
     let saved = result?.items.filter(x => !x.old).length || 0;
     for (const s of app.state.spots.slice(0, 20)) {
         try {
             const pack = await api.loadPack(s.lat, s.lon, s.water !== 'tatli');
             await api.shoreInfo(s.lat, s.lon).catch(() => {});
+            await loadRegion(s.lat, s.lon).catch(() => {});
             if (pack.source === 'canlı') saved++;
         } catch { /* alinamayan nokta atlanir */ }
     }
+    if (saved) { localStorage.setItem('paket', JSON.stringify({ name: label(), at: Date.now(), n: saved })); paint(); }
     toast(saved ? `${saved} yer için tahmin kaydedildi. İnternetsiz 24 saate kadar görülebilir; harita görüntüsü inmez.` : 'Veri indirilemedi.', saved ? 'ok' : 'bad');
 }
 
@@ -244,6 +254,15 @@ function placeRow(item, open) {
 
 const weekCard = () => `<section class="card"><h2>Bu hafta en iyi günler</h2>${result.week.map(x => `<button class="window" data-act="weekday" data-v="${x.p.id}|${x.date}"><b>${esc(dayName(x.date))}</b><span class="pill ${x.w.peak.safety.level === 'go' ? grade(x.w.score)[1] : 'warn'}">${grade(x.w.score)[0]}</span><small>${esc(x.p.name)} · ${span(x.w.from, x.w.to)}${x.w.peak.safety.level === 'go' ? '' : ' · dikkat'}</small></button>`).join('') || '<p>Güvenli pencere yok.</p>'}<p class="mute">İleri günlerin tahmin güveni düşer.</p></section>`;
 
+/** Son indirilen internetsiz paket; hava tahmini 24 saat gecerlidir. */
+function packCard() {
+    let p = null;
+    try { p = JSON.parse(localStorage.getItem('paket')); } catch { /* bozuk kayit yok sayilir */ }
+    const left = p ? 24 - (Date.now() - p.at) / 3600000 : 0;
+    return `<button type="button" class="btn big" data-act="download" ${busy ? 'disabled' : ''}>⤓ Bu bölgeyi internetsiz için indir</button>
+    ${p ? `<p class="mute">${left > 0 ? `Hazır: ${esc(p.name)}, ${p.n} yer · yaklaşık ${Math.ceil(left)} saat daha geçerli` : `Son indirme (${esc(p.name)}) 24 saatten eski`}. Harita görüntüsü inmez.</p>` : ''}`;
+}
+
 function draw(root) {
     const today = new Date().toLocaleDateString('sv-SE');
     const fresh = app.state.spots.some(s => s.water === 'tatli');
@@ -261,7 +280,7 @@ function draw(root) {
     <div class="row between top"><button type="button" class="area-btn" data-act="areas" aria-expanded="${choosing}">${esc(label())} ▾</button><span class="row"><button class="btn icon" data-act="refresh" aria-label="Yenile" title="Yenile" ${busy ? 'disabled' : ''}>⟳</button><button class="btn only-phone" data-nav="daha">☰ Menü</button></span></div>
     <p class="mute">${busy ? esc(progress) : result ? `Güncellendi ${new Date(result.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : ''}${searching ? ' · çevredeki meralar aranıyor' : ''}</p>
     ${choosing ? `<section class="card"><h2>Bölge değiştir</h2><form class="row search" data-form="area"><input name="q" placeholder="Ör. Bandırma" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button></form><div id="areas" class="chips">${places}</div>
-        <div class="row wrap"><button type="button" class="btn" data-act="here">Konumum</button><button type="button" class="btn" data-act="download" ${busy ? 'disabled' : ''}>İnternetsiz için indir</button></div></section>` : ''}
+        <div class="row wrap"><button type="button" class="btn" data-act="here">Konumum</button></div></section>` : ''}
     ${session.active() ? session.card() : ''}
     <div class="row top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın'], ['hafta', 'Hafta']], tab)}</div>
     ${(result?.notes || []).map(n => `<p class="banner warn">${esc(n)}</p>`).join('')}
@@ -269,6 +288,7 @@ function draw(root) {
     <div class="cols"><div>${body}</div><div>
     <button class="btn big" data-act="explore">⌖ Tüm meralar</button>
     <button class="btn big" data-act="weather">Hava ayrıntısı</button>
+    ${packCard()}
     ${extras.backupCard()}${install.card()}</div></div>`;
 }
 
@@ -318,7 +338,7 @@ export const actions = {
     refresh: () => { searchFailed = ''; compute(); },
     day: v => { tab = v; if (v !== 'hafta') day = Number(v); paint(); compute(); },
     here: async () => {
-        try { const p = await locate(); follow = true; noFix = false; await setArea({ lat: p.lat, lon: p.lon, name: 'Konumum', gps: true }); }
+        try { const p = await locate(); follow = true; noFix = false; await setArea({ lat: p.lat, lon: p.lon, name: 'Konumum', gps: true }); push.areaChanged(area); }
         catch (err) { toast(err.message, 'bad'); }
     },
     goto: v => { follow = false; const [lat, lon, name] = v.split('|'); setArea({ lat: Number(lat), lon: Number(lon), name: `${name} çevresi` }); },

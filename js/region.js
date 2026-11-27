@@ -48,7 +48,7 @@ async function mapped(lat, lon) {
     const d = 0.002;
     try {
         const url = `https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&LAYERS=eusm2025_msfd_full&QUERY_LAYERS=eusm2025_msfd_full&SRS=EPSG:4326&BBOX=${lon - d},${lat - d},${lon + d},${lat + d}&WIDTH=11&HEIGHT=11&X=5&Y=5&INFO_FORMAT=application/json&PROPERTYNAME=msfd_bbht&FEATURE_COUNT=4`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         const found = res.ok ? classifyHabitat((await res.json()).features.map(f => f.properties.msfd_bbht || '')) : null;
         if (found) return found;
     } catch { /* habitat servisi yanit vermezse jeoloji haritasina dusulur */ }
@@ -56,10 +56,13 @@ async function mapped(lat, lon) {
 }
 
 /** Dip: once kiyida gorulen yapi, sonra deniz cayiri/kaya habitati, sonra yerel tortu haritasi. */
-export async function habitat(lat, lon) {
+export async function habitat(lat, lon, quick = false) {
     await loadDip();
     const shore = shoreBottom(lat, lon);
     if (shore) return shore;
+    // Hizli yol: eldeki tortu haritasi varsa yavas habitat servisi beklenmez.
+    const local = quick && sedimentBottom(lat, lon);
+    if (local) return local;
     const found = await mapped(lat, lon);
     if (found && /cayiri|çayırı|kaya/.test(found.name)) return found;
     return sedimentBottom(lat, lon) || found || substrate(lat, lon).catch(() => null);

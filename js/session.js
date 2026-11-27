@@ -23,8 +23,10 @@ export async function hourFactors(lat, lon, at) {
     ctx.solunar = solunarFor(pack, ctx, date);
     ctx.moon = moonFor(pack, date);
     const row = pack.rows[i];
+    const scored = C.scoreHour(pack, i, ctx);
     return {
-        factors: C.factorRatios(C.scoreHour(pack, i, ctx).factors),
+        score: scored.score,
+        factors: C.factorRatios(scored.factors),
         conditions: [row.wind !== null ? `${C.kmh(row.wind)} ${C.dirCode(row.dir)}` : '', row.pressure !== null ? `${row.pressure} hPa` : '', row.air !== null ? `hava ${row.air}°C` : '', row.sea !== null ? `su ${row.sea}°C` : '', row.wave !== null && !row.waveEstimated ? `dalga ${row.wave} m` : ''].filter(Boolean).join(', ')
     };
 }
@@ -32,12 +34,13 @@ export async function hourFactors(lat, lon, at) {
 /** Merada internet yokken kaydedilenlerin hava verisini sonradan tamamlar. */
 export async function backfill() {
     if (!navigator.onLine) return;
-    const missing = app.state.catches.filter(c => !c.factors && c.lat !== null && c.at && Date.now() - Date.parse(c.at) < 60 * 86400000).slice(-10);
+    const missing = app.state.catches.filter(c => (!c.factors || c.score == null) && c.lat !== null && c.at && Date.now() - Date.parse(c.at) < 60 * 86400000).slice(-10);
     let changed = false;
     for (const c of missing) {
         const info = await hourFactors(c.lat, c.lon, c.at).catch(() => null);
         if (!info) continue;
         c.factors = info.factors;
+        c.score = info.score;
         c.conditions ||= info.conditions;
         changed = true;
     }

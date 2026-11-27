@@ -25,6 +25,15 @@ function quickSpecies() {
     return [...new Set([app.pref.species, ...mine, ...season].filter(Boolean))].slice(0, 6);
 }
 
+function scoreCard(k) {
+    const line = (title, g) => `<div class="item"><span>${title}</span><b>${g.trips ? `${g.trips} avın ${g.fish}’inde balık (%${g.rate})` : 'henüz av yok'}</b></div>`;
+    const verdict = !k.ready ? `<p class="mute">Yorum için iki grupta da en az ${k.min} av gerekir. Boş döndüğünüz avları da kaydedin.</p>`
+        : k.high.rate > k.low.rate + 10 ? '<p class="ok">Şimdiye kadar tahminin iyi dediği saatlerde daha sık balık çıktı.</p>'
+            : k.high.rate < k.low.rate - 10 ? '<p class="bad">Şimdiye kadar tahmin tutmadı: düşük puanlı saatlerde daha sık balık çıktı.</p>'
+                : '<p class="warn">Şimdiye kadar yüksek ve düşük puanlı avlar arasında belirgin fark yok.</p>';
+    return `<section class="card"><h2>İsabet karnesi</h2>${line(`Tahmin iyiydi (${k.line}+ puan)`, k.high)}${line(`Tahmin zayıftı (${k.line} altı)`, k.low)}${verdict}</section>`;
+}
+
 const nowLocal = () => new Date().toLocaleString('sv-SE').slice(0, 16).replace(' ', 'T');
 const top = (list, key) => {
     const m = new Map();
@@ -74,6 +83,7 @@ export function render(root, params = {}) {
     <p class="mute">Saat, konum ve hava kendiliğinden eklenir.</p>`}
     <section class="card"><h2>Tahmin sizden öğreniyor</h2><p>Av çıkan: <b>${learn.good}/${learn.min}</b> · çıkmayan: <b>${learn.blank}/${learn.min}</b></p>
         ${learn.ready ? '<p class="ok">Puan ağırlıkları kayıtlarınıza göre ayarlanıyor.</p>' : '<p class="mute">İki sayı da dolunca tahmin size göre ayarlanır. Boş döndüğünüz günler de en az av kadar önemli.</p>'}</section>
+    ${scoreCard(C.scorecard(all))}
     ${session.active() ? '' : session.card()}
     ${extras.backupCard()}
     ${cs.length || learn.ready ? fold('istat', 'İstatistik, rekorlar ve tahmin isabeti', `
@@ -131,9 +141,14 @@ export async function submit(form, root) {
         } catch { toast('O anın hava verisi alınamadı.', 'bad'); }
     }
     // O saatin etken degerleri saklanir; tahmin bunlardan ogrenir.
-    let factors = old && old.at === f.at.value && old.lat === place.lat && old.lon === place.lon ? old.factors : null;
-    if (!factors && place.lat !== null) factors = (await hourFactors(place.lat, place.lon, f.at.value).catch(() => null))?.factors || null;
-    const [entry] = C.sanitizeState({ catches: [{ id: old?.id || uid('av'), at: f.at.value, species: blank ? 'Av çıkmadı' : val('species').trim(), blank, factors, spot: place.spot, lat: place.lat, lon: place.lon, length: val('length'), weight: val('weight'), count: val('count'), lure: val('lure').trim(), released, note: val('note').trim(), conditions, photo: photo || old?.photo || '' }] }).catches;
+    const same = old && old.at === f.at.value && old.lat === place.lat && old.lon === place.lon;
+    let factors = same ? old.factors : null, score = same ? old.score : null;
+    if ((!factors || score == null) && place.lat !== null) {
+        const info = await hourFactors(place.lat, place.lon, f.at.value).catch(() => null);
+        factors ||= info?.factors || null;
+        score ??= info?.score ?? null;
+    }
+    const [entry] = C.sanitizeState({ catches: [{ id: old?.id || uid('av'), at: f.at.value, species: blank ? 'Av çıkmadı' : val('species').trim(), blank, factors, score, spot: place.spot, lat: place.lat, lon: place.lon, length: val('length'), weight: val('weight'), count: val('count'), lure: val('lure').trim(), released, note: val('note').trim(), conditions, photo: photo || old?.photo || '' }] }).catches;
     if (!entry) { button.disabled = false; return toast('Tür girin.', 'bad'); }
     app.state.catches = [...app.state.catches.filter(c => c.id !== entry.id), entry];
     editing = null;

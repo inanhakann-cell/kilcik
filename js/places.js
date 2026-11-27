@@ -32,7 +32,14 @@ export async function findPlaces(lat, lon, km = 25, limit = 10, home = { lat, lo
     // Biga disinda once bolgenin kiyi cizgisi, yer adlari ve dip verisi indirilir.
     await loadRegion(lat, lon).catch(() => null);
     const around = `(around:${km * 1000},${lat},${lon})`;
-    const r = await overpass(`[out:json][timeout:25];(nwr["man_made"~"^(pier|breakwater|groyne)$"]${around};node["natural"="cape"]${around};nwr["leisure"="fishing"]${around};);out center 200;`);
+    const region = regionData(lat, lon, km);
+    const r = region ? {
+        elements: region.structures.filter(x => !x.x && distanceKm(lat, lon, x.a, x.o) <= km).map(x => {
+            const [, type, id] = x.id.split('_');
+            const tags = x.k === 'cape' ? { natural: 'cape' } : x.k === 'fishing' ? { leisure: 'fishing' } : { man_made: x.k };
+            return { type, id, lat: x.a, lon: x.o, tags: { ...tags, name: x.n } };
+        })
+    } : await overpass(`[out:json][timeout:25];(nwr["man_made"~"^(pier|breakwater|groyne)$"]${around};node["natural"="cape"]${around};nwr["leisure"="fishing"]${around};);out center 200;`);
     const all = r.elements.map(e => {
         const t = e.tags || {};
         const kind = t.leisure === 'fishing' ? 'fishing' : t.natural === 'cape' ? 'cape' : t.man_made;
@@ -66,6 +73,8 @@ export async function findPlaces(lat, lon, km = 25, limit = 10, home = { lat, lo
 export async function humanPoints(lat, lon, km) {
     const local = await bundled(lat, lon, km - 3);
     if (local?.structures) return { settlements: local.settlements.map(([name, a, b]) => ({ name, lat: a, lon: b })), structures: local.structures.map(([a, b]) => ({ lat: a, lon: b })) };
+    const region = regionData(lat, lon, km - 3);
+    if (region) return { settlements: region.settlements.map(([name, a, b]) => ({ name, lat: a, lon: b })), structures: region.structures.filter(x => !['cape', 'groyne'].includes(x.k)).map(x => ({ lat: x.a, lon: x.o })) };
     const around = `(around:${Math.round(km * 1000)},${lat},${lon})`;
     const r = await overpass(`[out:json][timeout:30];(node["place"~"^(city|town|village|hamlet|suburb|neighbourhood)$"]${around};nwr["man_made"~"^(pier|breakwater)$"]${around};nwr["leisure"~"^(fishing|marina|beach_resort)$"]${around};nwr["tourism"="camp_site"]${around};);out center 900;`);
     const out = { settlements: [], structures: [] };
@@ -112,6 +121,13 @@ export async function bundled(lat, lon, km) {
 const packs = [];
 const toPoints = ways => ways.map(w => w.map(([lat, lon]) => ({ lat, lon })));
 const addLand = (data, extra = {}) => packs.push({ box: data.box, villages: data.settlements, ways: data.ways, lands: landmasses(toPoints(data.ways)), ...extra });
+// Uygulama sunucusundan gelen bolgeler: yapilar ve kapali alanlar da icerir, harita sunucusu gerekmez.
+const detailed = [];
+const inBox = (box, lat, lon, km = 0) => {
+    const dy = km / 111.32, dx = km / (111.32 * Math.cos(lat * Math.PI / 180));
+    return lat - dy >= box[0] && lat + dy <= box[2] && lon - dx >= box[1] && lon + dx <= box[3];
+};
+const regionData = (lat, lon, km = 0) => detailed.find(d => inBox(d.box, lat, lon, km)) || null;
 export const landPack = (lat, lon) => covering(packs, lat, lon);
 
 /** Uygulamayla gelen kiyi cizgisinden ada bilgisini bir kez hazirlar. */
@@ -125,9 +141,40 @@ export async function loadLands() {
 const REGION_DAYS = 60;
 const regions = new Map();
 /** Bolge karesi: noktanin cevresinde en az ~22 km kapsayan sabit kutu. */
-export function regionBox(lat, lon) {
+export function regionBox(lat, lon, dy = 0.3, dx = 0.38) {
     const a = Math.round(lat / 0.2) * 0.2, o = Math.round(lon / 0.25) * 0.25;
-    return [a - 0.3, o - 0.38, a + 0.3, o + 0.38].map(v => Number(v.toFixed(3)));
+    return [a - dy, o - dx, a + dy, o + dx].map(v => Number(v.toFixed(3)));
+}
+
+const extent = points => points.reduce((b, [a, o]) => [Math.min(b[0], a), Math.min(b[1], o), Math.max(b[2], a), Math.max(b[3], o)], [90, 180, -90, -180]);
+const touches = (points, box, pad = 0) => { const b = extent(points); return b[2] >= box[0] - pad && b[0] <= box[2] + pad && b[3] >= box[1] - pad && b[1] <= box[3] + pad; };
+
+/** Karolari tek bolgede birlestirir; kiyi parcalari adalar bolunmesin diye genis tutulur. */
+export function mergeTiles(tiles, box) {
+    const ways = new Map(tiles.flatMap(t => t.ways).map(w => [w.id, w.p]));
+    const here = (a, o) => inBox(box, a, o);
+    const all = key => tiles.flatMap(t => t[key]);
+    return {
+        box, detailed: true,
+        ways: [...ways.values()].filter(p => touches(p, box, 0.35)),
+        settlements: all('settlements').filter(([, a, o]) => here(a, o)),
+        structures: all('structures').filter(x => here(x.a, x.o)),
+        shore: all('shore').filter(x => touches(x.p, box)),
+        restricted: all('restricted').filter(x => here(x.bounds ? x.bounds.minlat : x.lat, x.bounds ? x.bounds.minlon : x.lon)),
+        sediment: all('sediment').filter(x => touches(x.r[0], box))
+    };
+}
+
+let tileIndex = null;
+/** Turkiye kiyilari uygulamanin kendi sunucusunda 1 derecelik karolar halinde durur; kapsam disinda null. */
+async function fetchTiles(lat, lon) {
+    tileIndex ||= await getJson('data/tr/dizin.json');
+    if (!tileIndex.tiles.includes(`${Math.floor(lat)}_${Math.floor(lon)}`)) return null;
+    const box = regionBox(lat, lon, 0.45, 0.55);
+    const names = [];
+    for (let a = Math.floor(box[0]); a <= Math.floor(box[2]); a++) for (let o = Math.floor(box[1]); o <= Math.floor(box[3]); o++) names.push(`${a}_${o}`);
+    const tiles = await Promise.all(names.filter(n => tileIndex.tiles.includes(n)).map(n => getJson(`data/tr/${n}.json`, 45000)));
+    return { ...mergeTiles(tiles, box), at: Date.now() };
 }
 
 async function fetchSediment(box) {
@@ -163,24 +210,26 @@ async function fetchRegion(box) {
     return data;
 }
 
-/** Biga disindaki bir bolgenin kiyi cizgisi, yer adlari ve dip verisi; indirilen kare cihazda saklanir.
-    cachedOnly: yalnizca cihazda kayitli olani yukler. */
+/** Bir bolgenin kiyi cizgisi, yer adlari, kiyi yapilari ve dip verisi; indirilen kare cihazda saklanir.
+    Turkiye uygulama sunucusundan, diger yerler harita sunucularindan. cachedOnly: yalnizca cihazdaki. */
 export async function loadRegion(lat, lon, cachedOnly = false) {
     await loadLands();
-    if (await bundled(lat, lon, 12)) return;
     const box = regionBox(lat, lon);
-    const key = `bolge:${box[0]},${box[1]}`;
+    const key = `bolge2:${box[0]},${box[1]}`;
     if (regions.get(key) === 'tam') return;
     const saved = await cacheGet(key);
     const use = (data, state) => {
-        if (!regions.has(key)) { addLand(data); addDip(data); }
+        if (!regions.has(key)) { addLand(data); addDip(data); if (data.detailed) detailed.push(data); }
         regions.set(key, state);
     };
     const fresh = saved && Date.now() - saved.at < REGION_DAYS * 86400000;
     if (saved) use(saved, fresh ? 'tam' : 'eski');
     if (fresh || cachedOnly) return;
     try {
-        const data = await fetchRegion(box);
+        let data = await fetchTiles(lat, lon).catch(() => null);
+        // Uygulamayla gelen alanda karo yoksa ek indirme gerekmez.
+        if (!data && await bundled(lat, lon, 12)) return;
+        data ||= await fetchRegion(box);
         await cacheSet(key, data);
         if (!regions.has(key)) use(data, 'tam'); else regions.set(key, 'tam');
     } catch (err) { if (!saved) throw err; }
@@ -275,7 +324,8 @@ export async function coastline(lat, lon, km) {
 export async function restrictedAreas(lat, lon, km) {
     const local = await bundled(lat, lon, km - 1);
     const around = `(around:${Math.round(km * 1000)},${lat},${lon})`;
-    const r = local?.restricted ? { elements: local.restricted } : await overpass(`[out:json][timeout:25];(nwr["landuse"~"^(industrial|military|harbour|port)$"]${around};nwr["military"]${around};nwr["leisure"="marina"]${around};nwr["seamark:type"="harbour"]${around};nwr["industrial"="port"]${around};);out tags bb 300;`);
+    const known = local?.restricted || regionData(lat, lon, km - 1)?.restricted;
+    const r = known ? { elements: known } : await overpass(`[out:json][timeout:25];(nwr["landuse"~"^(industrial|military|harbour|port)$"]${around};nwr["military"]${around};nwr["leisure"="marina"]${around};nwr["seamark:type"="harbour"]${around};nwr["industrial"="port"]${around};);out tags bb 300;`);
     const kind = t => (t.military || t.landuse === 'military' ? 'askeri alan' : t.leisure === 'marina' ? 'marina' : /harbour|port/.test(`${t.landuse} ${t.industrial} ${t['seamark:type']}`) ? 'liman' : 'sanayi alanı');
     return r.elements.map(e => {
         const b = e.bounds || (e.lat !== undefined ? { minlat: e.lat, maxlat: e.lat, minlon: e.lon, maxlon: e.lon } : null);
