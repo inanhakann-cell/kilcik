@@ -20,11 +20,12 @@ export function render(root) {
             <div class="months">${MONTHS.map((m, i) => `<span class="${s.aylar.includes(i + 1) ? 'on' : ''}${i + 1 === month ? ' now' : ''}">${m}</span>`).join('')}</div>
             <p>${esc(`${s.yem} · ${s.saat}`)}</p><p class="mute">Su ${s.su[0]}–${s.su[1]} °C · ${esc(TECHNIQUES.filter(t => s.t.includes(t.id)).map(t => t.ad).join(', '))}</p>
             ${r ? `<p><b>${esc(ruleText(r))}</b></p>${r.not ? `<p class="mute">${esc(r.not)}</p>` : ''}` : ''}
-            <div class="row wrap"><button class="btn" data-act="photo" data-v="${esc(s.ad)}">Fotoğraf göster</button><button class="btn" data-act="plan" data-v="${esc(s.ad)}">Bu tür için planla</button></div><div class="ph"></div></section>`;
+            <div class="row wrap"><button class="btn" data-act="photo" data-v="${esc(s.ad)}">Fotoğraf göster</button><button class="btn" data-act="plan" data-v="${esc(s.ad)}">Bu tür için planla</button>${s.ortam === 'tuzlu' ? `<button class="btn" data-act="rig" data-v="${esc(s.ad)}">Takımı gör</button>` : ''}</div><div class="ph"></div></section>`;
     }).join('')}</div>`;
 }
 
 export const actions = {
+    rig: v => app.go('rehber', { species: v }),
     water: (v, root) => { water = v; render(root); },
     plan: v => { const s = SPECIES.find(x => x.ad === v); app.go('plan', { draft: { species: v, water: s.ortam, technique: s.t[0] } }); },
     photo: async (v, root) => {

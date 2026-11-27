@@ -4,6 +4,16 @@ import { esc } from './ui.js';
 
 export const NOTES = [
     {
+        v: 38, date: '27.11.2026', title: 'Birlikte daha isabetli',
+        items: [
+            'İsterseniz av sonuçlarınızı isimsiz paylaşın; çevrede son 14 günde ne çıktığı Bugün ekranında görünür.',
+            '☰ Menü’de “Sorun bildir / öneri gönder”.',
+            'Fırtına riski varsa Bugün ekranının üstünde uyarı çıkar (resmi uyarı değildir).',
+            '☰ Menü → Takım ve düğüm rehberi: internetsiz de açılır.',
+            'Dip işaretlerini de isteğe bağlı paylaşabilirsiniz.'
+        ]
+    },
+    {
         v: 37, date: '27.11.2026', title: 'Daha hızlı ve isabetli',
         items: [
             'Rüzgar artık dört hava modelinin ortalaması: kıyı ölçümleriyle sınamada tek tahminden daha yakın çıktı.',

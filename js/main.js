@@ -17,12 +17,14 @@ import * as extras from './extras.js';
 import * as welcome from './welcome.js';
 import * as news from './news.js';
 import * as push from './push.js';
+import * as ortak from './ortak.js';
+import * as rehber from './views/rehber.js';
 import { loadLands } from './places.js';
 import { loadDip } from './dip.js';
 
-const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, ayarlar: settings, daha: more };
+const VIEWS = { bugun: today, hava: weather, kesif: explore, plan, harita: map, noktalar: spots, planlar: plans, takim: tackle, gunluk: log, turler: species, rehber, ayarlar: settings, daha: more };
 // Telefonda menu altinda duran ekranlar
-const IN_MORE = ['plan', 'planlar', 'takim', 'turler', 'ayarlar'];
+const IN_MORE = ['plan', 'planlar', 'takim', 'turler', 'rehber', 'ayarlar'];
 // Alt cubukta Meralar secili gorunen ekranlar
 const IN_SPOTS = ['kesif', 'harita', 'noktalar'];
 const PHONE = matchMedia('(max-width:899px),(max-height:500px)');
@@ -131,6 +133,7 @@ try {
     session.backfill().catch(() => {});
     window.addEventListener('online', () => session.backfill().catch(() => {}));
     today.autoRefresh();
+    ortak.start();
     navigator.storage?.persist?.().catch(() => {});
     setTimeout(check, 5000);
     setInterval(check, 3 * 3600000);

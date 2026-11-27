@@ -1,4 +1,5 @@
 // Nokta gonderme, dip isaretleme, yedek hatirlatmasi ve gorunum tercihi.
+import * as ortak from './ortak.js';
 import * as C from './core.js';
 import { app, esc, uid, toast, copy, persist, download } from './ui.js';
 
@@ -44,7 +45,7 @@ const floorButtons = (lat, lon) => Object.entries(C.FLOORS).map(([key, label]) =
     const on = near(lat, lon)?.tags.includes(key);
     return `<button type="button" class="chip${on ? ' on' : ''}" data-floor="${key}" data-at="${lat},${lon}" aria-pressed="${Boolean(on)}">${label}</button>`;
 }).join('');
-export const floorChips = (lat, lon) => `<div class="floors"><p class="mute">Dip nasıl? Gördüğünüzü işaretleyin (yalnızca sizde saklanır).</p><div class="chips">${floorButtons(lat, lon)}</div></div>`;
+export const floorChips = (lat, lon) => `<div class="floors"><p class="mute">Dip nasıl? Gördüğünüzü işaretleyin${ortak.choice().dip ? ' (isimsiz paylaşılır)' : ' (yalnızca sizde saklanır)'}.</p>${ortak.floorsNear(lat, lon) ? `<p>Başkalarının gördüğü: <b>${esc(ortak.floorsNear(lat, lon))}</b></p>` : ''}<div class="chips">${floorButtons(lat, lon)}</div></div>`;
 
 export async function toggleFloor(button) {
     const [lat, lon] = button.dataset.at.split(',').map(Number);

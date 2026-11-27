@@ -288,6 +288,17 @@ export function scorecard(catches, min = 5, line = 65) {
     return { high, low, total: trips.size, min, line, ready: high.trips >= min && low.trips >= min };
 }
 
+/** Onumuzdeki `hours` saatte firtina duzeyinde ruzgar, dalga veya oraj: { from, to, wind, gust, wave, thunder } | null. */
+export function stormAhead(pack, nowMs = Date.now(), hours = 48) {
+    const bad = pack.rows.filter(r => {
+        const ms = toMs(r.time, pack.offset);
+        return ms + 3600000 > nowMs && ms < nowMs + hours * 3600000 && (r.wind >= 22 || r.gust >= 34 || r.code >= 95 || (r.wave >= 1.5 && !r.waveEstimated));
+    });
+    if (!bad.length) return null;
+    const top = key => bad.reduce((a, r) => (isNum(r[key]) && r[key] > a ? r[key] : a), 0);
+    return { from: bad[0].time, to: bad[bad.length - 1].time, wind: top('wind'), gust: top('gust'), wave: top('wave') || null, thunder: bad.some(r => r.code >= 95) };
+}
+
 export const FACTOR_NAMES = { zaman: 'Günün saati', solunar: 'Solunar', basinc: 'Basınç eğilimi', ruzgar: 'Rüzgar', dalga: 'Dalga', deniz_gecmisi: 'Deniz geçmişi', gelgit: 'Su hareketi', gokyuzu: 'Gökyüzü', su_egilimi: 'Su sıcaklığı değişimi', ay: 'Ay evresi' };
 const FACTOR_KEYS = Object.keys(FACTOR_NAMES);
 export const factorRatios = factors => Object.fromEntries(factors.filter(f => FACTOR_KEYS.includes(f.key) && f.max).map(f => [f.key, Number((f.points / f.max).toFixed(2))]));

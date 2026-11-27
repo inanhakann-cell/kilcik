@@ -11,6 +11,7 @@ import * as session from '../session.js';
 import * as install from '../install.js';
 import * as extras from '../extras.js';
 import * as push from '../push.js';
+import * as ortak from '../ortak.js';
 import { dipLine } from '../dip.js';
 import { app, $, esc, chips, toast, locate, persist, uid, grade, pill, opened, fold, WARNINGS_URL } from '../ui.js';
 
@@ -132,6 +133,7 @@ async function compute() {
         const seen = await seenNearby(hub.lat, hub.lon, month).catch(() => { notes.push('Gözlem kayıtları alınamadı.'); return {}; });
         const items = [];
         const week = new Map();
+        let storm = null;
         let stale = 0;
         for (const [n, p] of distinct(list, here).entries()) {
             if (area !== here) break;
@@ -143,6 +145,7 @@ async function compute() {
                 const ageH = (Date.now() - Date.parse(pack.updatedAt)) / 3600000;
                 const old = C.dataStatus(pack, Date.now()).ok ? 0 : Math.floor(ageH);
                 if (old && !(pack.source === 'önbellek' && ageH <= 24)) { stale++; continue; }
+                storm ||= C.stormAhead(pack);
                 const shore = await api.shoreInfo(p.lat, p.lon).catch(() => null);
                 const ctx = contextFor({ ...p, technique: app.draft.technique }, shore?.bearing ?? null);
                 const dates = datesOf(pack);
@@ -170,7 +173,10 @@ async function compute() {
         if (stale) notes.push(`${stale} yer için güncel veri alınamadı.`);
         // Hesap sirasinda bolge degistiyse eski sonuc gosterilmez.
         if (area !== here) { queued = true; return; }
-        result = { items: items.sort((a, b) => b.rank - a.rank), week: [...week.values()].sort((a, b) => a.date.localeCompare(b.date)), at: Date.now(), day: asked, notes };
+        result = { items: items.sort((a, b) => b.rank - a.rank), week: [...week.values()].sort((a, b) => a.date.localeCompare(b.date)), at: Date.now(), day: asked, notes, storm, shared: result?.shared };
+        // Ortak ozet beklemeden gelir; sunucu yavassa ekran gecikmez.
+        const mineResult = result;
+        ortak.summary(here.lat, here.lon).then(shared => { if (shared && result === mineResult) { result.shared = shared; paint(); } });
     } finally {
         busy = false;
         progress = '';
@@ -263,6 +269,13 @@ function packCard() {
     ${p ? `<p class="mute">${left > 0 ? `Hazır: ${esc(p.name)}, ${p.n} yer · yaklaşık ${Math.ceil(left)} saat daha geçerli` : `Son indirme (${esc(p.name)}) 24 saatten eski`}. Harita görüntüsü inmez.</p>` : ''}`;
 }
 
+const when = t => `${new Date(`${t.slice(0, 10)}T12:00`).toLocaleDateString('tr-TR', { weekday: 'long' })} ${C.hhmm(t)}`;
+function stormBanner(s) {
+    if (!s) return '';
+    const parts = [`rüzgar ${C.kmh(s.wind)}`, `hamle ${C.kmh(s.gust)}`, s.wave ? `dalga ${s.wave} m` : '', s.thunder ? 'gök gürültülü sağanak' : ''].filter(Boolean);
+    return `<p class="banner bad">⚠ Fırtına riski: ${esc(when(s.from))}${s.to === s.from ? '' : ` – ${esc(when(s.to))}`} · ${esc(parts.join(', '))}. KILÇIK’ın tahminidir. <a href="${WARNINGS_URL}" target="_blank" rel="noopener">Resmi uyarılara bakın</a></p>`;
+}
+
 function draw(root) {
     const today = new Date().toLocaleDateString('sv-SE');
     const fresh = app.state.spots.some(s => s.water === 'tatli');
@@ -282,6 +295,7 @@ function draw(root) {
     ${choosing ? `<section class="card"><h2>Bölge değiştir</h2><form class="row search" data-form="area"><input name="q" placeholder="Ör. Bandırma" aria-label="Bölge ara" value="${esc(typed)}"><button class="btn">Ara</button></form><div id="areas" class="chips">${places}</div>
         <div class="row wrap"><button type="button" class="btn" data-act="here">Konumum</button></div></section>` : ''}
     ${session.active() ? session.card() : ''}
+    ${stormBanner(result?.storm)}
     <div class="row top">${chips('day', [['0', 'Bugün'], ['1', 'Yarın'], ['hafta', 'Hafta']], tab)}</div>
     ${(result?.notes || []).map(n => `<p class="banner warn">${esc(n)}</p>`).join('')}
     ${searchFailed ? '<p class="banner warn">Yer arama servisi şu an yanıt vermiyor; iskele ve mendirek adları eksik olabilir.</p>' : ''}
@@ -289,7 +303,7 @@ function draw(root) {
     <button class="btn big" data-act="explore">⌖ Tüm meralar</button>
     <button class="btn big" data-act="weather">Hava ayrıntısı</button>
     ${packCard()}
-    ${extras.backupCard()}${install.card()}</div></div>`;
+    ${ortak.summaryCard(result?.shared)}${extras.backupCard()}${install.card()}</div></div>`;
 }
 
 export function render(root) {

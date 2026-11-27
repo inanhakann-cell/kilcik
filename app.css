@@ -143,3 +143,5 @@ nav button{flex-direction:row;gap:10px;font-size:.95rem;padding:11px 14px;border
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
 #map{height:62vh}
 }
+
+[data-form="feedback"] textarea { display: block; width: 100%; margin: 6px 0 10px; box-sizing: border-box; font: inherit; font-size: 16px; padding: 10px; border-radius: 10px; }

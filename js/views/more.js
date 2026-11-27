@@ -4,6 +4,7 @@ import * as extras from '../extras.js';
 import * as welcome from '../welcome.js';
 import * as news from '../news.js';
 import * as push from '../push.js';
+import * as ortak from '../ortak.js';
 import { chips, WARNINGS_URL } from '../ui.js';
 
 const ITEMS = [
@@ -12,6 +13,7 @@ const ITEMS = [
     ['planlar', 'Kayıtlı planlar', 'Planlar ve takvime ekleme'],
     ['takim', 'Takım çantam', 'Kamış, makine, yem'],
     ['turler', 'Tür rehberi', 'Mevsim, yem ve yasal sınırlar'],
+    ['rehber', 'Takım ve düğüm rehberi', 'Hangi balığa nasıl takım, internetsiz'],
     ['ayarlar', 'Ayarlar ve yedek', 'Güvenlik sınırları, yedek indir ve yükle']
 ];
 
@@ -23,11 +25,13 @@ export function render(root) {
         <button type="button" class="card" data-act="news"><b>Yenilikler</b><small>Son güncellemede neler değişti</small></button>
         <a class="card" href="kilavuz.html"><b>Kullanım kılavuzu</b><small>Her ekran ve düğme ne işe yarar</small></a></div>
         <section class="card"><h2>Görünüm</h2>${chips('theme', [['koyu', 'Koyu'], ['acik', 'Gündüz (açık)']], look.theme)}<div class="row">${chips('text', [['normal', 'Normal yazı'], ['buyuk', 'Büyük yazı']], look.text)}</div></section>
+        ${ortak.shareCard()}${ortak.feedbackCard()}
         ${install.card()}`;
     push.paint(root);
 }
 
-export const change = (field, value, root) => push.change(field, root);
+export const change = (field, value, root) => (ortak.toggle(field) ? render(root) : push.change(field, root));
+export const submit = form => ortak.sendFeedback(form);
 
 export const actions = {
     ...push.actions,

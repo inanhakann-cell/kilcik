@@ -1,4 +1,5 @@
 // Av gunlugu: o andaki gercek kosullar, fotograf, istatistik.
+import * as ortak from '../ortak.js';
 import * as C from '../core.js';
 import * as api from '../api.js';
 import { SPECIES, LEGAL_URL } from '../species.js';
@@ -84,6 +85,7 @@ export function render(root, params = {}) {
     <section class="card"><h2>Tahmin sizden öğreniyor</h2><p>Av çıkan: <b>${learn.good}/${learn.min}</b> · çıkmayan: <b>${learn.blank}/${learn.min}</b></p>
         ${learn.ready ? '<p class="ok">Puan ağırlıkları kayıtlarınıza göre ayarlanıyor.</p>' : '<p class="mute">İki sayı da dolunca tahmin size göre ayarlanır. Boş döndüğünüz günler de en az av kadar önemli.</p>'}</section>
     ${scoreCard(C.scorecard(all))}
+    ${ortak.shareCard()}
     ${session.active() ? '' : session.card()}
     ${extras.backupCard()}
     ${cs.length || learn.ready ? fold('istat', 'İstatistik, rekorlar ve tahmin isabeti', `
@@ -243,6 +245,7 @@ function paintPlace(root) {
 }
 
 export function change(field, value, root) {
+    if (ortak.toggle(field)) return render(root);
     const s = app.state.spots.find(x => x.id === value);
     if (field === 'spot' && s) { place = { lat: s.lat, lon: s.lon, spot: s.name }; paintPlace(root); }
 }

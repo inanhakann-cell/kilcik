@@ -55,5 +55,5 @@ export const locate = (options = {}) => new Promise((resolve, reject) => {
 
 export async function persist() {
     const { saveState } = await import('./store.js');
-    try { await saveState(app.state); } catch { toast('Cihaza kaydedilemedi (depolama dolu olabilir).', 'bad'); }
+    try { await saveState(app.state); window.dispatchEvent(new Event('kilcik:saved')); } catch { toast('Cihaza kaydedilemedi (depolama dolu olabilir).', 'bad'); }
 }
